@@ -19,7 +19,7 @@ export class Server {
 
   constructor() {
     this.app = express();
-    this.port = Number(process.env.PORT) || 8082;
+    this.port = Number(process.env.PORT) || 8000;
 
     this.middlewares();
     this.routes();

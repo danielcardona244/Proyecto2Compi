@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "parse": "npx jison analizador/analizador.jison -o analizador/parser.js",
+    "parse": "npx jison src/grammar/analizador.jison -o src/grammar/parser.js",
     "dev": "nodemon app.ts"
     
   },
@@ -16,6 +16,7 @@
     "@types/cors": "^2.8.19",
     "@types/dotenv": "^6.1.1",
     "@types/node": "^25.5.0",
+    "jison": "^0.4.18",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.2"
   },

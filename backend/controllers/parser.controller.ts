@@ -1,4 +1,4 @@
-import parser from "../analizador/parserWrapper";
+import parser from "../src/grammar/parserWrapper";
 
 export const analizar = (req: any, res: any) => {
 
