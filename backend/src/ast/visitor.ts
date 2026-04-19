@@ -2,31 +2,31 @@
 
 import { Statement, Expression } from './nodes';
 
-export interface Visitor<T> {
-  visitStatement(stmt: Statement): T;
-  visitExpression(expr: Expression): T;
+export abstract class Visitor<T> {
+  abstract visitStatement(stmt: Statement): T;
+  abstract visitExpression(expr: Expression): T;
 
   // Specific visit methods
-  visitVariableDeclaration(stmt: any): T;
-  visitFunctionDeclaration(stmt: any): T;
-  visitStructDeclaration(stmt: any): T;
-  visitExpressionStatement(stmt: any): T;
-  visitIfStatement(stmt: any): T;
-  visitForStatement(stmt: any): T;
-  visitForRangeStatement(stmt: any): T;
-  visitSwitchStatement(stmt: any): T;
-  visitBreakStatement(stmt: any): T;
-  visitContinueStatement(stmt: any): T;
-  visitReturnStatement(stmt: any): T;
+  abstract visitVariableDeclaration(stmt: any): T;
+  abstract visitFunctionDeclaration(stmt: any): T;
+  abstract visitStructDeclaration(stmt: any): T;
+  abstract visitExpressionStatement(stmt: any): T;
+  abstract visitIfStatement(stmt: any): T;
+  abstract visitForStatement(stmt: any): T;
+  abstract visitForRangeStatement(stmt: any): T;
+  abstract visitSwitchStatement(stmt: any): T;
+  abstract visitBreakStatement(stmt: any): T;
+  abstract visitContinueStatement(stmt: any): T;
+  abstract visitReturnStatement(stmt: any): T;
 
-  visitBinaryExpression(expr: any): T;
-  visitUnaryExpression(expr: any): T;
-  visitLiteral(expr: any): T;
-  visitIdentifier(expr: any): T;
-  visitFunctionCall(expr: any): T;
-  visitSliceLiteral(expr: any): T;
-  visitStructLiteral(expr: any): T;
-  visitMemberAccess(expr: any): T;
-  visitArrayAccess(expr: any): T;
-  visitAssignment(expr: any): T;
+  abstract visitBinaryExpression(expr: any): T;
+  abstract visitUnaryExpression(expr: any): T;
+  abstract visitLiteral(expr: any): T;
+  abstract visitIdentifier(expr: any): T;
+  abstract visitFunctionCall(expr: any): T;
+  abstract visitSliceLiteral(expr: any): T;
+  abstract visitStructLiteral(expr: any): T;
+  abstract visitMemberAccess(expr: any): T;
+  abstract visitArrayAccess(expr: any): T;
+  abstract visitAssignment(expr: any): T;
 }

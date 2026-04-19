@@ -1,9 +1,7 @@
-%lex
+﻿%lex
 %%
-
-\s+                   /* ignorar espacios */
-\t+                   /* ignorar tabs */
-\n+                   /* ignorar nuevas líneas */
+[ \t]+                   /* ignorar espacios y tabs */
+\n                        return 'NEWLINE';
 
 // Comentarios
 "//".*                /* ignorar comentarios de línea */
@@ -48,14 +46,17 @@
 "=="                  return '==';
 "!="                  return '!=';
 "<"                   return '<';
-">"                   return '>';
 "<="                  return '<=';
+">"                   return '>';
 ">="                  return '>=';
 "&&"                  return '&&';
 "||"                  return '||';
 "!"                   return '!';
 "+="                  return '+=';
 "-="                  return '-=';
+"*="                  return '*=';
+"/="                  return '/=';
+"%="                  return '%=';
 "="                   return '=';
 ":="                  return ':=';
 
@@ -72,6 +73,10 @@
 
 . {
     console.log("Carácter no reconocido: " + yytext);
+    if (typeof yy.errorCollector !== 'undefined') {
+        yy.errorCollector.addLexicalError("Carácter no reconocido: " + yytext, yylloc.first_line, yylloc.first_column);
+    }
+    return 'INVALID_TOKEN';
 }
 
 <<EOF>>               return 'EOF';
@@ -79,6 +84,14 @@
 /lex
 
 %start program
+%left '||'
+%left '&&'
+%left '==' '!='
+%left '<' '<=' '>' '>='
+%left '+' '-'
+%left '*' '/' '%'
+%right '!'
+%nonassoc '(' '.' '{' IDENTIFIER
 
 %%
 
@@ -87,15 +100,21 @@ program
 ;
 
 statements
-    : statements statement { $$ = $1.concat($2); }
+    : /* empty */ { $$ = []; }
     | statement { $$ = [$1]; }
+    | statements statement_separator statement { $$ = $1.concat($3); }
+;
+
+statement_separator
+    : ';'
+    | NEWLINE
 ;
 
 statement
     : variable_declaration
     | function_declaration
     | struct_declaration
-    | expression_statement
+    | expression
     | if_statement
     | for_statement
     | switch_statement
@@ -104,26 +123,24 @@ statement
     | return_statement
 ;
 
-// Placeholder para declaraciones y sentencias
 variable_declaration
     : VAR IDENTIFIER type '=' expression { $$ = { type: 'variable_declaration', name: $2, varType: $3, value: $5 }; }
-    | VAR IDENTIFIER type { $$ = { type: 'variable_declaration', name: $2, varType: $3 }; }
     | IDENTIFIER ':=' expression { $$ = { type: 'variable_declaration', name: $1, value: $3 }; }
-;
-
-type
-    : INT
-    | FLOAT64
-    | STRING_TYPE
-    | BOOL
-    | RUNE
-    | '[' ']' type { $$ = { type: 'slice', elementType: $3 }; }
-    | IDENTIFIER { $$ = $1; } // Para structs
 ;
 
 function_declaration
     : FUNC IDENTIFIER '(' parameters ')' type '{' statements '}' { $$ = { type: 'function_declaration', name: $2, params: $4, returnType: $6, body: $8 }; }
     | FUNC IDENTIFIER '(' parameters ')' '{' statements '}' { $$ = { type: 'function_declaration', name: $2, params: $4, body: $7 }; }
+;
+
+type
+    : INT { $$ = 'int'; }
+    | FLOAT64 { $$ = 'float64'; }
+    | STRING_TYPE { $$ = 'string'; }
+    | BOOL { $$ = 'bool'; }
+    | RUNE { $$ = 'rune'; }
+    | '[' ']' type { $$ = { type: 'slice', elementType: $3 }; }
+    | IDENTIFIER { $$ = $1; }
 ;
 
 parameters
@@ -153,9 +170,6 @@ struct_field
     : type IDENTIFIER ';' { $$ = { type: $1, name: $2 }; }
 ;
 
-expression_statement
-    : expression ';' { $$ = { type: 'expression_statement', expression: $1 }; }
-;
 
 if_statement
     : IF expression '{' statements '}' else_part { $$ = { type: 'if_statement', condition: $2, body: $4, else: $6 }; }
@@ -196,8 +210,12 @@ continue_statement
 ;
 
 return_statement
-    : RETURN expression { $$ = { type: 'return', value: $2 }; }
-    | RETURN { $$ = { type: 'return' }; }
+    : RETURN return_expression { $$ = { type: 'return', value: $2 }; }
+;
+
+return_expression
+    : expression
+    | /* empty */ { $$ = null; }
 ;
 
 expression
@@ -209,6 +227,9 @@ assignment_expression
     | IDENTIFIER '=' assignment_expression { $$ = { type: 'assignment', left: $1, right: $3 }; }
     | IDENTIFIER '+=' assignment_expression { $$ = { type: 'assignment', left: $1, operator: '+=', right: $3 }; }
     | IDENTIFIER '-=' assignment_expression { $$ = { type: 'assignment', left: $1, operator: '-=', right: $3 }; }
+    | IDENTIFIER '*=' assignment_expression { $$ = { type: 'assignment', left: $1, operator: '*=', right: $3 }; }
+    | IDENTIFIER '/=' assignment_expression { $$ = { type: 'assignment', left: $1, operator: '/=', right: $3 }; }
+    | IDENTIFIER '%=' assignment_expression { $$ = { type: 'assignment', left: $1, operator: '%=', right: $3 }; }
 ;
 
 logical_or_expression
@@ -230,8 +251,8 @@ equality_expression
 relational_expression
     : additive_expression
     | relational_expression '<' additive_expression { $$ = { type: 'binary', operator: '<', left: $1, right: $3 }; }
-    | relational_expression '>' additive_expression { $$ = { type: 'binary', operator: '>', left: $1, right: $3 }; }
     | relational_expression '<=' additive_expression { $$ = { type: 'binary', operator: '<=', left: $1, right: $3 }; }
+    | relational_expression '>' additive_expression { $$ = { type: 'binary', operator: '>', left: $1, right: $3 }; }
     | relational_expression '>=' additive_expression { $$ = { type: 'binary', operator: '>=', left: $1, right: $3 }; }
 ;
 
@@ -255,23 +276,23 @@ unary_expression
 ;
 
 primary_expression
-    : IDENTIFIER { $$ = { type: 'identifier', name: $1 }; }
-    | NUMBER { $$ = { type: 'literal', value: Number(yytext), literalType: 'number' }; }
-    | STRING_LITERAL { $$ = { type: 'literal', value: yytext.slice(1, -1), literalType: 'string' }; }
-    | RUNE_LITERAL { $$ = { type: 'literal', value: yytext.slice(1, -1), literalType: 'rune' }; }
-    | TRUE { $$ = { type: 'literal', value: true, literalType: 'bool' }; }
-    | FALSE { $$ = { type: 'literal', value: false, literalType: 'bool' }; }
-    | NIL { $$ = { type: 'literal', value: null, literalType: 'nil' }; }
-    | '(' expression ')' { $$ = $2; }
-    | function_call
-    | slice_literal
-    | struct_literal
-    | member_access
-    | array_access
+    : IDENTIFIER primary_suffix { $$ = $2($1); }
+    | NUMBER
+    | STRING_LITERAL
+    | RUNE_LITERAL
+    | TRUE
+    | FALSE
+    | NIL
+    | '(' expression ')'
+    | array_literal
 ;
 
-function_call
-    : IDENTIFIER '(' arguments ')' { $$ = { type: 'function_call', name: $1, args: $3 }; }
+primary_suffix
+    : /* empty */ %prec IDENTIFIER { $$ = function(id) { return { type: 'variable', name: id }; }; }
+    | '(' arguments ')' %prec '(' { $$ = function(id) { return { type: 'function_call', name: id, args: $2 }; }; }
+    | '.' IDENTIFIER '(' arguments ')' %prec '.' { $$ = function(id) { return { type: 'method_call', object: { type: 'variable', name: id }, method: $2, args: $4 }; }; }
+    | '{' '}' %prec '{' { $$ = function(id) { return { type: 'struct_literal', structType: id, fields: {} }; }; }
+    | '{' field_list '}' %prec '{' { $$ = function(id) { return { type: 'struct_literal', structType: id, fields: $2 }; }; }
 ;
 
 arguments
@@ -284,42 +305,16 @@ argument_list
     | expression { $$ = [$1]; }
 ;
 
-slice_literal
-    : '[' ']' type '{' elements '}' { $$ = { type: 'slice_literal', elementType: $3, elements: $5 }; }
+array_literal
+    : '[' ']' type '{' '}' { $$ = { type: 'array_literal', elementType: $3, elements: [] }; }
+    | '[' ']' type '{' argument_list '}' { $$ = { type: 'array_literal', elementType: $3, elements: $5 }; }
 ;
 
-elements
-    : element_list { $$ = $1; }
-    | /* empty */ { $$ = []; }
+field_list
+    : field_list ',' field { $$ = Object.assign($1, $3); }
+    | field { $$ = $1; }
 ;
 
-element_list
-    : element_list ',' expression { $$ = $1.concat($3); }
-    | expression { $$ = [$1]; }
-;
-
-struct_literal
-    : IDENTIFIER '{' field_initializers '}' { $$ = { type: 'struct_literal', structName: $1, fields: $3 }; }
-;
-
-field_initializers
-    : field_initializer_list { $$ = $1; }
-    | /* empty */ { $$ = {}; }
-;
-
-field_initializer_list
-    : field_initializer_list ',' field_initializer { $$ = Object.assign($1, $3); }
-    | field_initializer { $$ = $1; }
-;
-
-field_initializer
+field
     : IDENTIFIER ':' expression { $$ = { [$1]: $3 }; }
-;
-
-member_access
-    : primary_expression '.' IDENTIFIER { $$ = { type: 'member_access', object: $1, member: $3 }; }
-;
-
-array_access
-    : primary_expression '[' expression ']' { $$ = { type: 'array_access', array: $1, index: $3 }; }
 ;
