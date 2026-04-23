@@ -1,62 +1,55 @@
 import parser from "../src/grammar/parserWrapper";
-import { ASTReporter } from "../src/ast/astReporter";
-import { SymbolTable } from "../src/environment/symbolTable";
-import { SymbolCollector } from "../src/environment/symbolCollector";
-import { ErrorCollector } from "../src/errors/errorCollector";
-import { Statement } from "../src/ast/nodes";
+import { Arbol } from "../src/Simbolo/Arbol";
+import { TablaSimbolos } from "../src/Simbolo/TablaSimbolos";
 
 export const analizar = (req: any, res: any) => {
-    const { codigo } = req.body;
-
-    const errorCollector = new ErrorCollector();
+    const { codigo, interpretar } = req.body;
 
     try {
         // Parsear el código
-        const ast: Statement[] = parser.parse(codigo, errorCollector);
+        const instrucciones = parser.parse(codigo);
 
-        // Generar reporte AST en formato DOT
-        const reporter = new ASTReporter();
-        const dotReport = reporter.generateReport(ast);
+        // Crear árbol y tabla de símbolos
+        const arbol = new Arbol(instrucciones);
+        const tabla = arbol.tablaGlobal;
 
-        // Recolectar símbolos
-        const symbolTable = new SymbolTable();
-        const collector = new SymbolCollector(symbolTable);
-        collector.collectSymbols(ast);
-        const symbols = symbolTable.getAllSymbols();
+        // Ejecutar instrucciones
+        let consola = "";
+        let errores: any[] = [];
 
-        // Generar tabla de símbolos formateada
-        const symbolTableReport = symbols.map(symbol => ({
-            'ID': symbol.id,
-            'Tipo símbolo': symbol.type,
-            'Tipo dato': symbol.dataType,
-            'Ámbito': symbol.scope,
-            'Línea': symbol.line,
-            'Columna': symbol.column
+        for (const instruccion of instrucciones) {
+            const resultado = instruccion.interpretar(arbol, tabla);
+            if (resultado instanceof Error) {
+                errores.push(resultado);
+            }
+        }
+
+        // Obtener la salida
+        consola = arbol.consola;
+        errores = arbol.errores.map(err => ({
+            tipo: err.tipo,
+            descripcion: err.descripcion,
+            linea: err.linea,
+            columna: err.columna
         }));
 
-        res.json({
-            success: true,
-            ast: ast,
-            dotReport: dotReport,
-            symbolTable: symbolTableReport,
-            errors: errorCollector.getErrorTable(),
-            message: "Análisis completado exitosamente"
+        res.status(200).json({
+            estado: 'exito',
+            salida: consola,
+            errores: errores,
+            simbolos: arbol.simbolos.map(s => ({
+                id: s.id,
+                tipo: s.tipo.tipoDato,
+                valor: s.valor,
+                linea: s.linea,
+                columna: s.columna
+            }))
         });
-
     } catch (error: any) {
-        console.error("Error de parsing:", error);
-
-        // Agregar error sintáctico
-        errorCollector.addSyntacticError(
-            error.message || "Error de sintaxis desconocido",
-            error.location?.first_line || 1,
-            error.location?.first_column || 1
-        );
-
-        res.json({
-            success: false,
-            errors: errorCollector.getErrorTable(),
-            message: "Errores encontrados durante el análisis"
+        res.status(400).json({
+            estado: 'error',
+            mensaje: error.message || 'Error durante el análisis',
+            detalles: error.toString()
         });
     }
 };
