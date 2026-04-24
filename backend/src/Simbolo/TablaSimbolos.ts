@@ -49,7 +49,14 @@ export class TablaSimbolos {
     }
 
     public getFuncion(nombre: string): any {
-        return this.funciones.get(nombre) || null;
+        let tabla: TablaSimbolos | null = this;
+        while (tabla !== null) {
+            if (tabla.funciones.has(nombre)) {
+                return tabla.funciones.get(nombre)!;
+            }
+            tabla = tabla.padre;
+        }
+        return null;
     }
 
     public setStruct(nombre: string, struct: any): void {
@@ -57,24 +64,13 @@ export class TablaSimbolos {
     }
 
     public getStruct(nombre: string): any {
-        return this.structs.get(nombre) || null;
+        let tabla: TablaSimbolos | null = this;
+        while (tabla !== null) {
+            if (tabla.structs.has(nombre)) {
+                return tabla.structs.get(nombre)!;
+            }
+            tabla = tabla.padre;
+        }
+        return null;
     }
-}    public funciones: Map<string, any>;
-    public structs: Map<string, any>;
-        this.funciones = new Map();
-        this.structs = new Map();
-    public setFuncion(nombre: string, funcion: any): void {
-        this.funciones.set(nombre, funcion);
-    }
-
-    public getFuncion(nombre: string): any {
-        return this.funciones.get(nombre) || null;
-    }
-
-    public setStruct(nombre: string, struct: any): void {
-        this.structs.set(nombre, struct);
-    }
-
-    public getStruct(nombre: string): any {
-        return this.structs.get(nombre) || null;
-    }
+}

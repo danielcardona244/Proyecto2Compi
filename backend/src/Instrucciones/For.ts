@@ -5,6 +5,8 @@ import { Tipo } from "../Simbolo/Tipo";
 import { tipoDato } from "../Simbolo/tipoDato";
 import { Errores } from "../Excepciones/Errores";
 import { Node } from "../Abstract/Node";
+import { MapType } from "../Simbolo/Map";
+import { Simbolo } from "../Simbolo/Simbolo";
 
 export class For extends Instruccion {
     public inicial: Instruccion | null;
@@ -13,6 +15,11 @@ export class For extends Instruccion {
     public sentencias: Instruccion[];
     private breakFlag: boolean = false;
     private continueFlag: boolean = false;
+    // Para for range
+    public isRange: boolean = false;
+    public rangeVar1: string | null = null;
+    public rangeVar2: string | null = null;
+    public rangeExpression: Instruccion | null = null;
 
     constructor(
         inicial: Instruccion | null,
@@ -30,6 +37,10 @@ export class For extends Instruccion {
     }
 
     public interpretar(arbol: Arbol, tabla: TablaSimbolos): any {
+        if (this.isRange) {
+            return this.interpretarRange(arbol, tabla);
+        }
+
         // Crear nuevo scope para el for
         let tablaFor = new TablaSimbolos(tabla);
 
@@ -98,20 +109,21 @@ export class For extends Instruccion {
         node.pushChild(nodoSentencias);
         return node;
     }
-}
+
     public setRange(var1: string, var2: string | null, expr: Instruccion): void {
         this.isRange = true;
         this.rangeVar1 = var1;
         this.rangeVar2 = var2;
         this.rangeExpression = expr;
     }
+
     private interpretarRange(arbol: Arbol, tabla: TablaSimbolos): any {
         let tablaFor = new TablaSimbolos(tabla);
         const collection = this.rangeExpression!.interpretar(arbol, tabla);
         if (Array.isArray(collection)) {
             for (let i = 0; i < collection.length; i++) {
-                if (this.rangeVar1) tablaFor.setVariable(this.rangeVar1, i, new Tipo(tipoDato.ENTERO, false));
-                if (this.rangeVar2) tablaFor.setVariable(this.rangeVar2, collection[i], new Tipo(tipoDato.ENTERO, false)); // Placeholder type
+                if (this.rangeVar1) tablaFor.setSimbolo(new Simbolo(this.rangeVar1, new Tipo(tipoDato.ENTERO, false), i, this.linea, this.columna));
+                if (this.rangeVar2) tablaFor.setSimbolo(new Simbolo(this.rangeVar2, new Tipo(tipoDato.ENTERO, false), collection[i], this.linea, this.columna)); // Placeholder type
                 for (const sentencia of this.sentencias) {
                     const resultado = sentencia.interpretar(arbol, tablaFor);
                     if (resultado instanceof Errores) return resultado;
@@ -123,8 +135,8 @@ export class For extends Instruccion {
             }
         } else if (collection instanceof MapType) {
             for (const [key, value] of collection.values.entries()) {
-                if (this.rangeVar1) tablaFor.setVariable(this.rangeVar1, key, new Tipo(tipoDato.ENTERO, false));
-                if (this.rangeVar2) tablaFor.setVariable(this.rangeVar2, value, new Tipo(tipoDato.ENTERO, false));
+                if (this.rangeVar1) tablaFor.setSimbolo(new Simbolo(this.rangeVar1, new Tipo(tipoDato.ENTERO, false), key, this.linea, this.columna));
+                if (this.rangeVar2) tablaFor.setSimbolo(new Simbolo(this.rangeVar2, new Tipo(tipoDato.ENTERO, false), value, this.linea, this.columna));
                 for (const sentencia of this.sentencias) {
                     const resultado = sentencia.interpretar(arbol, tablaFor);
                     if (resultado instanceof Errores) return resultado;
@@ -137,3 +149,4 @@ export class For extends Instruccion {
         }
         return null;
     }
+}

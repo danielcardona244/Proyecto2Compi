@@ -44,32 +44,20 @@ export class Resta extends Instruccion {
         const tipo1 = this.operando1.tipo.tipoDato;
         const tipo2 = this.operando2.tipo.tipoDato;
 
-        switch (tipo1) {
-            case tipoDato.ENTERO:
-                switch (tipo2) {
-                    case tipoDato.ENTERO:
-                        this.tipo.tipoDato = tipoDato.ENTERO;
-                        return op1 - op2;
-                    case tipoDato.DECIMAL:
-                        this.tipo.tipoDato = tipoDato.DECIMAL;
-                        return Number(op1) - op2;
-                    default:
-                        return new Errores("SEMANTICO", "Resta erronea", this.linea, this.columna);
-                }
-            case tipoDato.DECIMAL:
-                switch (tipo2) {
-                    case tipoDato.ENTERO:
-                        this.tipo.tipoDato = tipoDato.DECIMAL;
-                        return op1 - Number(op2);
-                    case tipoDato.DECIMAL:
-                        this.tipo.tipoDato = tipoDato.DECIMAL;
-                        return op1 - op2;
-                    default:
-                        return new Errores("SEMANTICO", "Resta erronea", this.linea, this.columna);
-                }
-            default:
-                return new Errores("SEMANTICO", "Resta erronea", this.linea, this.columna);
+        const n1 = this.toNumber(op1, tipo1);
+        const n2 = this.toNumber(op2, tipo2);
+        if (n1 === null || n2 === null) {
+            return new Errores("SEMANTICO", "Resta erronea", this.linea, this.columna);
         }
+        this.tipo.tipoDato = tipo1 === tipoDato.DECIMAL || tipo2 === tipoDato.DECIMAL ? tipoDato.DECIMAL : tipoDato.ENTERO;
+        return n1 - n2;
+    }
+
+    private toNumber(valor: any, tipo: tipoDato): number | null {
+        if (tipo === tipoDato.BOOLEANO) return valor ? 1 : 0;
+        if (tipo === tipoDato.CARACTER) return String(valor).charCodeAt(0);
+        if (typeof valor === "number") return valor;
+        return null;
     }
 
     public ast(arbol: Arbol, tabla: TablaSimbolos): Node {

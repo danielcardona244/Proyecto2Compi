@@ -4,5 +4,7 @@ export enum tipoDato {
     CADENA = "CADENA",
     BOOLEANO = "BOOLEANO",
     CARACTER = "CARACTER",
-    VOID = "VOID"
+    VOID = "VOID",
+    SLICE = "SLICE",
+    MAP = "MAP"
 }

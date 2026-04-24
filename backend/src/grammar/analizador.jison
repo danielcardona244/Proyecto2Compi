@@ -29,6 +29,10 @@ const LlamadaFuncion = require("../Expresiones/LlamadaFuncion").LlamadaFuncion;
 const AccesoCampo = require("../Expresiones/AccesoCampo").AccesoCampo;
 const AccesoArreglo = require("../Expresiones/AccesoArreglo").AccesoArreglo;
 const SliceLiteral = require("../Expresiones/SliceLiteral").SliceLiteral;
+const MapLiteral = require("../Expresiones/MapLiteral").MapLiteral;
+const Modulo = require("../Expresiones/Modulo").Modulo;
+const Logica = require("../Expresiones/Logica").Logica;
+const Unario = require("../Expresiones/Unario").Unario;
 
 // Enums
 const Tipo = require("../Simbolo/Tipo").Tipo;
@@ -64,7 +68,7 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 "false"               return 'FALSE';
 "nil"                 return 'NIL';
 "map"                 return 'MAP';
-"print"               return 'PRINT';
+"fmt.Println"         return 'PRINTLN';
 "int"                 return 'INT';
 "float64"             return 'FLOAT64';
 "string"              return 'STRING_TYPE';
@@ -80,38 +84,47 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 [a-zA-Z_][a-zA-Z0-9_]* return 'IDENTIFIER';
 
 // Operadores
-"+"                   return '+';
-"-"                   return '-';
-"*"                   return '*';
-"/"                   return '/';
-"%"                   return '%';
 "=="                  return '==';
 "!="                  return '!=';
-"<"                   return '<';
 "<="                  return '<=';
-">"                   return '>';
 ">="                  return '>=';
 "&&"                  return '&&';
 "||"                  return '||';
-"!"                   return '!';
 "+="                  return '+=';
 "-="                  return '-=';
 "*="                  return '*=';
 "/="                  return '/=';
 "%="                  return '%=';
-"="                   return '=';
 ":="                  return ':=';
+"+"                   return '+';
+"-"                   return '-';
+"*"                   return '*';
+"/"                   return '/';
+"%"                   return '%';
+"<"                   return '<';
+">"                   return '>';
+"!"                   return '!';
+"="                   return '=';
 
 // Puntuaci�n
 "("                   return '(';
 ")"                   return ')';
 "{"                   return '{';
-"}"                   return '}';
+"}" {
+    if (!yy.injectedBraceSeparator) {
+        yy.injectedBraceSeparator = true;
+        this.unput("}");
+        return ';';
+    }
+    yy.injectedBraceSeparator = false;
+    return '}';
+}
 "["                   return '[';
 "]"                   return ']';
 ","                   return ',';
 "."                   return '.';
 ";"                   return ';';
+":"                   return ':';
 
 . {
     console.log("Car�cter no reconocido: " + yytext);
@@ -133,21 +146,36 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 %left '+' '-'
 %left '*' '/' '%'
 %right '!'
-%nonassoc '(' '.' '{' IDENTIFIER PRINT
+%nonassoc '(' '.' '{' IDENTIFIER
 
 %%
 
 program
-    : statements EOF { return $1; }
+    : separators optional_statements separators EOF { return $2; }
+;
+
+optional_statements
+    : /* empty */ { $$ = []; }
+    | statements { $$ = $1; }
+    | statements statement_separators { $$ = $1; }
 ;
 
 statements
-
-    | statement { $$ = [$1]; }
-    | statements statement_separator statement { $$ = $1.concat($3); }
+    : statement { $$ = [$1]; }
+    | statements statement_separators statement { $$ = $1.concat($3); }
 ;
 
-statement_separator
+separators
+    : /* empty */
+    | separators separator
+;
+
+statement_separators
+    : separator
+    | statement_separators separator
+;
+
+separator
     : ';'
     | NEWLINE
 ;
@@ -162,32 +190,42 @@ statement
     | switch_statement
     | break_statement
     | continue_statement
+    | return_statement
     | function_declaration
     | struct_declaration
 ;
 
 variable_declaration
     : VAR IDENTIFIER INT '=' expression { $$ = new Declaracion(tipoDato.ENTERO, $2, $5, @1.first_line, @1.first_column); }
+    | VAR IDENTIFIER INT { $$ = new Declaracion(tipoDato.ENTERO, $2, null, @1.first_line, @1.first_column); }
     | VAR IDENTIFIER FLOAT64 '=' expression { $$ = new Declaracion(tipoDato.DECIMAL, $2, $5, @1.first_line, @1.first_column); }
+    | VAR IDENTIFIER FLOAT64 { $$ = new Declaracion(tipoDato.DECIMAL, $2, null, @1.first_line, @1.first_column); }
     | VAR IDENTIFIER STRING_TYPE '=' expression { $$ = new Declaracion(tipoDato.CADENA, $2, $5, @1.first_line, @1.first_column); }
+    | VAR IDENTIFIER STRING_TYPE { $$ = new Declaracion(tipoDato.CADENA, $2, null, @1.first_line, @1.first_column); }
     | VAR IDENTIFIER BOOL '=' expression { $$ = new Declaracion(tipoDato.BOOLEANO, $2, $5, @1.first_line, @1.first_column); }
-    | IDENTIFIER ':=' expression { $$ = new Declaracion(tipoDato.ENTERO, $1, $3, @1.first_line, @1.first_column); }
+    | VAR IDENTIFIER BOOL { $$ = new Declaracion(tipoDato.BOOLEANO, $2, null, @1.first_line, @1.first_column); }
+    | VAR IDENTIFIER RUNE '=' expression { $$ = new Declaracion(tipoDato.CARACTER, $2, $5, @1.first_line, @1.first_column); }
+    | VAR IDENTIFIER RUNE { $$ = new Declaracion(tipoDato.CARACTER, $2, null, @1.first_line, @1.first_column); }
+    | VAR IDENTIFIER tipo { $$ = new Declaracion($3.tipoDato, $2, null, @1.first_line, @1.first_column); }
+    | VAR IDENTIFIER tipo '=' expression { $$ = new Declaracion($3.tipoDato, $2, $5, @1.first_line, @1.first_column); }
+    | IDENTIFIER ':=' expression { $$ = new Declaracion(tipoDato.VOID, $1, $3, @1.first_line, @1.first_column); }
 ;
 
 if_statement
-    : IF expression '{' statements '}' else_part { $$ = new If($2, $4, $6, @1.first_line, @1.first_column); }
+    : IF expression '{' separators optional_statements separators '}' else_part { $$ = new If($2, $5, $8, @1.first_line, @1.first_column); }
 ;
 
 else_part
-    : ELSE '{' statements '}' { $$ = $3; }
+    : ELSE '{' separators optional_statements separators '}' { $$ = $4; }
+    | ELSE if_statement { $$ = [$2]; }
     | /* empty */ { $$ = null; }
 ;
 
 for_statement
-    : FOR expression '{' statements '}' { $$ = new For(null, $2, null, $4, @1.first_line, @1.first_column); }
-    | FOR assignment_expression ';' expression ';' assignment_expression '{' statements '}' { $$ = new For($2, $4, $6, $8, @1.first_line, @1.first_column); }
-    | FOR variable_declaration ';' expression ';' assignment_expression '{' statements '}' { $$ = new For($2, $4, $6, $8, @1.first_line, @1.first_column); }
-    | FOR IDENTIFIER ',' IDENTIFIER ':=' RANGE expression '{' statements '}' { $$ = new For(null, null, null, $9, @1.first_line, @1.first_column); }
+    : FOR expression '{' separators optional_statements separators '}' { $$ = new For(null, $2, null, $5, @1.first_line, @1.first_column); }
+    | FOR assignment_expression ';' expression ';' assignment_expression '{' separators optional_statements separators '}' { $$ = new For($2, $4, $6, $9, @1.first_line, @1.first_column); }
+    | FOR variable_declaration ';' expression ';' assignment_expression '{' separators optional_statements separators '}' { $$ = new For($2, $4, $6, $9, @1.first_line, @1.first_column); }
+    | FOR IDENTIFIER ',' IDENTIFIER ':=' RANGE expression '{' separators optional_statements separators '}' { const f = new For(null, null, null, $10, @1.first_line, @1.first_column); f.setRange($2, $4, $7); $$ = f; }
 ;
 
 switch_statement
@@ -200,8 +238,8 @@ case_clauses
 ;
 
 case_clause
-    : CASE expression ':' statements { $$ = { valor: $2, sentencias: $4 }; }
-    | DEFAULT ':' statements { $$ = { valor: null, sentencias: $3 }; }
+    : CASE expression ':' optional_statements { $$ = { valor: $2, sentencias: $4 }; }
+    | DEFAULT ':' optional_statements { $$ = { valor: null, sentencias: $3 }; }
 ;
 
 break_statement
@@ -213,15 +251,15 @@ continue_statement
 ;
 
 function_declaration
-    : FUNC IDENTIFIER '(' parameters ')' return_type '{' statements '}' { $$ = new Funcion($2, $4, $6, $8, @1.first_line, @1.first_column); }
+    : FUNC IDENTIFIER '(' parameters ')' return_type '{' separators optional_statements separators '}' { $$ = new Funcion($2, $4, $6, $9, @1.first_line, @1.first_column); }
 ;
 
 struct_declaration
-    : STRUCT IDENTIFIER '{' field_declarations '}' { $$ = new Struct($2, $4, @1.first_line, @1.first_column); }
+    : STRUCT IDENTIFIER '{' separators field_declarations separators '}' { $$ = new Struct($2, $5, @1.first_line, @1.first_column); }
 ;
 
 parameters
-
+    : /* empty */ { $$ = []; }
     | parameter_list { $$ = $1; }
 ;
 
@@ -240,13 +278,14 @@ return_type
 ;
 
 field_declarations
-
+    : /* empty */ { $$ = []; }
     | field_declaration { $$ = [$1]; }
     | field_declarations field_declaration { $$ = $1.concat($2); }
 ;
 
 field_declaration
-    : IDENTIFIER tipo ';' { $$ = { nombre: $1, tipo: $2 }; }
+    : tipo IDENTIFIER separator { $$ = { nombre: $2, tipo: $1 }; }
+    | IDENTIFIER tipo separator { $$ = { nombre: $1, tipo: $2 }; }
 ;
 
 tipo
@@ -255,16 +294,16 @@ tipo
     | STRING_TYPE { $$ = new Tipo(tipoDato.CADENA, false); }
     | BOOL { $$ = new Tipo(tipoDato.BOOLEANO, false); }
     | RUNE { $$ = new Tipo(tipoDato.CARACTER, false); }
-    | '[' ']' tipo { $$ = new Tipo(tipoDato.ENTERO, true); } // Placeholder for slice
+    | '[' ']' tipo { $$ = new Tipo(tipoDato.SLICE, false, $3); }
 ;
 
 assignment_statement
-    : IDENTIFIER '=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column); }
-    | IDENTIFIER '+=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column); }
-    | IDENTIFIER '-=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column); }
-    | IDENTIFIER '*=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column); }
-    | IDENTIFIER '/=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column); }
-    | IDENTIFIER '%=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column); }
+    : IDENTIFIER '=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '='); }
+    | IDENTIFIER '+=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '+='); }
+    | IDENTIFIER '-=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '-='); }
+    | IDENTIFIER '*=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '*='); }
+    | IDENTIFIER '/=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '/='); }
+    | IDENTIFIER '%=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '%='); }
 ;
 
 expression_statement
@@ -272,7 +311,9 @@ expression_statement
 ;
 
 print_statement
-    : PRINT '(' expression ')' { $$ = new Print($3, @1.first_line, @1.first_column); }
+    : PRINTLN '(' arguments ')' { $$ = new LlamadaFuncion("fmt.Println", $3, @1.first_line, @1.first_column); }
+    | IDENTIFIER '.' IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1 + "." + $3, $5, @1.first_line, @1.first_column); }
+    | IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
 ;
 
 return_statement
@@ -294,10 +335,12 @@ assignment_expression
 
 logical_or_expression
     : logical_and_expression
+    | logical_or_expression '||' logical_and_expression { $$ = new Logica($1, $3, '||', @1.first_line, @1.first_column); }
 ;
 
 logical_and_expression
     : equality_expression
+    | logical_and_expression '&&' equality_expression { $$ = new Logica($1, $3, '&&', @1.first_line, @1.first_column); }
 ;
 
 equality_expression
@@ -324,17 +367,18 @@ multiplicative_expression
     : unary_expression
     | multiplicative_expression '*' unary_expression { $$ = new Multiplicacion($1, $3, OperadoresAritmeticos.MULTIPLICACION, @1.first_line, @1.first_column); }
     | multiplicative_expression '/' unary_expression { $$ = new Division($1, $3, OperadoresAritmeticos.DIVISION, @1.first_line, @1.first_column); }
+    | multiplicative_expression '%' unary_expression { $$ = new Modulo($1, $3, @1.first_line, @1.first_column); }
 ;
 
 unary_expression
     : primary_expression
-    | '!' unary_expression { $$ = { type: 'unary', operator: '!', operand: $2 }; }
-    | '-' unary_expression { $$ = { type: 'unary', operator: '-', operand: $2 }; }
+    | '!' unary_expression { $$ = new Unario('!', $2, @1.first_line, @1.first_column); }
+    | '-' unary_expression { $$ = new Unario('-', $2, @1.first_line, @1.first_column); }
 ;
 
 primary_expression
     : IDENTIFIER { $$ = new Identificador($1, @1.first_line, @1.first_column); }
-    | NUMBER { $$ = new Nativo(Number($1), new Tipo(tipoDato.ENTERO, false), @1.first_line, @1.first_column); }
+    | NUMBER { $$ = new Nativo(Number($1), new Tipo(String($1).includes('.') ? tipoDato.DECIMAL : tipoDato.ENTERO, false), @1.first_line, @1.first_column); }
     | STRING_LITERAL { $$ = new Nativo($1.slice(1, -1), new Tipo(tipoDato.CADENA, false), @1.first_line, @1.first_column); }
     | RUNE_LITERAL { $$ = new Nativo($1.slice(1, -1), new Tipo(tipoDato.CARACTER, false), @1.first_line, @1.first_column); }
     | TRUE { $$ = new Nativo(true, new Tipo(tipoDato.BOOLEANO, false), @1.first_line, @1.first_column); }
@@ -345,79 +389,51 @@ primary_expression
     | field_access
     | array_access
     | slice_literal
+    | map_literal
 ;
-    | function_call
-    | field_access
-    | array_access
-    | slice_literal
+
 function_call
-    : IDENTIFIER '(' arguments ')' {     | function_call
-    | field_access
-    | array_access
-    | slice_literal = new LlamadaFuncion(, , @1.first_line, @1.first_column); }
+    : IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
+    | IDENTIFIER '.' IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1 + "." + $3, $5, @1.first_line, @1.first_column); }
 ;
 
 arguments
-    : /* empty */ {     | function_call
-    | field_access
-    | array_access
-    | slice_literal = []; }
-    | expression_list {     | function_call
-    | field_access
-    | array_access
-    | slice_literal = ; }
+    : /* empty */ { $$ = []; }
+    | expression_list { $$ = $1; }
 ;
 
 expression_list
-    : expression {     | function_call
-    | field_access
-    | array_access
-    | slice_literal = []; }
-    | expression_list ',' expression {     | function_call
-    | field_access
-    | array_access
-    | slice_literal = .concat(); }
+    : expression { $$ = [$1]; }
+    | expression_list ',' expression { $$ = $1.concat($3); }
 ;
 
 field_access
-    : primary_expression '.' IDENTIFIER {     | function_call
-    | field_access
-    | array_access
-    | slice_literal = new AccesoCampo(, , @1.first_line, @1.first_column); }
+    : primary_expression '.' IDENTIFIER { $$ = new AccesoCampo($1, $3, @1.first_line, @1.first_column); }
 ;
 
 array_access
-    : primary_expression '[' expression ']' {     | function_call
-    | field_access
-    | array_access
-    | slice_literal = new AccesoArreglo(, , @1.first_line, @1.first_column); }
+    : primary_expression '[' expression ']' { $$ = new AccesoArreglo($1, $3, @1.first_line, @1.first_column); }
 ;
 
 slice_literal
-    : '[' ']' tipo '{' expression_list '}' {     | function_call
-    | field_access
-    | array_access
-    | slice_literal = new SliceLiteral(, , @1.first_line, @1.first_column); }
-;
-    | map_literal
-slice_literal
-    : '[' ']' tipo '{' expression_list '}' {     | map_literal = new SliceLiteral(, , @1.first_line, @1.first_column); }
+    : '[' ']' tipo '{' expression_list '}' { $$ = new SliceLiteral($3, $5, @1.first_line, @1.first_column); }
+    | '[' ']' tipo '{' '}' { $$ = new SliceLiteral($3, [], @1.first_line, @1.first_column); }
 ;
 
 map_literal
-    : MAP '[' tipo ']' tipo '{' key_value_pairs '}' {     | map_literal = new MapLiteral(, , , @1.first_line, @1.first_column); }
+    : MAP '[' tipo ']' tipo '{' key_value_pairs '}' { $$ = new MapLiteral($3, $5, $7, @1.first_line, @1.first_column); }
 ;
 
 key_value_pairs
-    : /* empty */ {     | map_literal = []; }
-    | key_value_list {     | map_literal = ; }
+    : /* empty */ { $$ = []; }
+    | key_value_list { $$ = $1; }
 ;
 
 key_value_list
-    : key_value_pair {     | map_literal = []; }
-    | key_value_list ',' key_value_pair {     | map_literal = .concat(); }
+    : key_value_pair { $$ = [$1]; }
+    | key_value_list ',' key_value_pair { $$ = $1.concat($3); }
 ;
 
 key_value_pair
-    : expression ':' expression {     | map_literal = { key: , value:  }; }
+    : expression ':' expression { $$ = { key: $1, value: $3 }; }
 ;

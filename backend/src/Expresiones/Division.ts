@@ -44,36 +44,27 @@ export class Division extends Instruccion {
         const tipo1 = this.operando1.tipo.tipoDato;
         const tipo2 = this.operando2.tipo.tipoDato;
 
-        if (op2 === 0) {
+        const n1 = this.toNumber(op1, tipo1);
+        const n2 = this.toNumber(op2, tipo2);
+
+        if (n1 === null || n2 === null) {
+            return new Errores("SEMANTICO", "Division erronea", this.linea, this.columna);
+        }
+
+        if (n2 === 0) {
             return new Errores("SEMANTICO", "Division por cero", this.linea, this.columna);
         }
 
-        switch (tipo1) {
-            case tipoDato.ENTERO:
-                switch (tipo2) {
-                    case tipoDato.ENTERO:
-                        this.tipo.tipoDato = tipoDato.ENTERO;
-                        return Math.floor(op1 / op2);
-                    case tipoDato.DECIMAL:
-                        this.tipo.tipoDato = tipoDato.DECIMAL;
-                        return Number(op1) / op2;
-                    default:
-                        return new Errores("SEMANTICO", "Division erronea", this.linea, this.columna);
-                }
-            case tipoDato.DECIMAL:
-                switch (tipo2) {
-                    case tipoDato.ENTERO:
-                        this.tipo.tipoDato = tipoDato.DECIMAL;
-                        return op1 / Number(op2);
-                    case tipoDato.DECIMAL:
-                        this.tipo.tipoDato = tipoDato.DECIMAL;
-                        return op1 / op2;
-                    default:
-                        return new Errores("SEMANTICO", "Division erronea", this.linea, this.columna);
-                }
-            default:
-                return new Errores("SEMANTICO", "Division erronea", this.linea, this.columna);
-        }
+        const esDecimal = tipo1 === tipoDato.DECIMAL || tipo2 === tipoDato.DECIMAL;
+        this.tipo.tipoDato = esDecimal ? tipoDato.DECIMAL : tipoDato.ENTERO;
+        return esDecimal ? n1 / n2 : Math.trunc(n1 / n2);
+    }
+
+    private toNumber(valor: any, tipo: tipoDato): number | null {
+        if (tipo === tipoDato.BOOLEANO) return valor ? 1 : 0;
+        if (tipo === tipoDato.CARACTER) return String(valor).charCodeAt(0);
+        if (typeof valor === "number") return valor;
+        return null;
     }
 
     public ast(arbol: Arbol, tabla: TablaSimbolos): Node {

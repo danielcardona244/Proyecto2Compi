@@ -20,7 +20,7 @@ export class Declaracion extends Instruccion {
     }
 
     public interpretar(arbol: Arbol, tabla: TablaSimbolos): any {
-        let valorInterpretado: any = null;
+        let valorInterpretado: any = this.valorPorDefecto(this.tipoDeclarado);
         if (this.valor !== null) {
             valorInterpretado = this.valor.interpretar(arbol, tabla);
             if (valorInterpretado instanceof Errores) {
@@ -28,7 +28,8 @@ export class Declaracion extends Instruccion {
             }
         }
 
-        let simbolo = new Simbolo(this.id, new Tipo(this.tipoDeclarado, false), valorInterpretado, this.linea, this.columna);
+        const tipoFinal = this.tipoDeclarado === tipoDato.VOID ? this.inferirTipo(valorInterpretado) : this.tipoDeclarado;
+        let simbolo = new Simbolo(this.id, new Tipo(tipoFinal, false), valorInterpretado, this.linea, this.columna);
         if (!tabla.setSimbolo(simbolo)) {
             arbol.errores.push(new Errores("SEMANTICO", `Variable ${this.id} ya declarada`, this.linea, this.columna));
             return null;
@@ -45,7 +46,8 @@ export class Declaracion extends Instruccion {
         }
         return node;
     }
-}    private inferirTipo(valor: any): tipoDato {
+
+    private inferirTipo(valor: any): tipoDato {
         if (typeof valor === 'number') {
             return valor % 1 === 0 ? tipoDato.ENTERO : tipoDato.DECIMAL;
         } else if (typeof valor === 'string') {
@@ -57,3 +59,23 @@ export class Declaracion extends Instruccion {
         }
         return tipoDato.VOID;
     }
+
+    private valorPorDefecto(tipo: tipoDato): any {
+        switch (tipo) {
+            case tipoDato.ENTERO:
+            case tipoDato.CARACTER:
+                return 0;
+            case tipoDato.DECIMAL:
+                return 0.0;
+            case tipoDato.CADENA:
+                return "";
+            case tipoDato.BOOLEANO:
+                return false;
+            case tipoDato.SLICE:
+            case tipoDato.MAP:
+            case tipoDato.VOID:
+            default:
+                return null;
+        }
+    }
+}

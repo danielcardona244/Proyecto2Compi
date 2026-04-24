@@ -9,11 +9,13 @@ import { Node } from "../Abstract/Node";
 export class Asignacion extends Instruccion {
     public id: string;
     public valor: Instruccion;
+    public operador: string; // '=', '+=', '-=', etc.
 
-    constructor(id: string, valor: Instruccion, linea: number, columna: number) {
+    constructor(id: string, valor: Instruccion, linea: number, columna: number, operador: string = '=') {
         super(new Tipo(tipoDato.VOID, false), linea, columna);
         this.id = id;
         this.valor = valor;
+        this.operador = operador;
     }
 
     public interpretar(arbol: Arbol, tabla: TablaSimbolos): any {
@@ -28,7 +30,28 @@ export class Asignacion extends Instruccion {
             return null;
         }
 
-        simbolo.valor = valorInterpretado;
+        let nuevoValor = valorInterpretado;
+        if (this.operador !== '=') {
+            switch (this.operador) {
+                case '+=':
+                    nuevoValor = simbolo.valor + valorInterpretado;
+                    break;
+                case '-=':
+                    nuevoValor = simbolo.valor - valorInterpretado;
+                    break;
+                case '*=':
+                    nuevoValor = simbolo.valor * valorInterpretado;
+                    break;
+                case '/=':
+                    nuevoValor = simbolo.valor / valorInterpretado;
+                    break;
+                case '%=':
+                    nuevoValor = simbolo.valor % valorInterpretado;
+                    break;
+            }
+        }
+
+        simbolo.valor = nuevoValor;
         tabla.actualizarSimbolo(simbolo);
         return null;
     }

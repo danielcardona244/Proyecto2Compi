@@ -20,6 +20,7 @@ export class Identificador extends Instruccion {
             arbol.errores.push(new Errores("SEMANTICO", `Variable ${this.id} no definida`, this.linea, this.columna));
             return null;
         }
+        this.tipo = simbolo.tipo;
         return simbolo.valor;
     }
 
