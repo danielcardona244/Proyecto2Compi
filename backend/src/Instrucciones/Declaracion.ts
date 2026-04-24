@@ -45,4 +45,15 @@ export class Declaracion extends Instruccion {
         }
         return node;
     }
-}
+}    private inferirTipo(valor: any): tipoDato {
+        if (typeof valor === 'number') {
+            return valor % 1 === 0 ? tipoDato.ENTERO : tipoDato.DECIMAL;
+        } else if (typeof valor === 'string') {
+            return tipoDato.CADENA;
+        } else if (typeof valor === 'boolean') {
+            return tipoDato.BOOLEANO;
+        } else if (Array.isArray(valor)) {
+            return tipoDato.ENTERO; // Placeholder for slice
+        }
+        return tipoDato.VOID;
+    }

@@ -63,6 +63,7 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 "true"                return 'TRUE';
 "false"               return 'FALSE';
 "nil"                 return 'NIL';
+"map"                 return 'MAP';
 "print"               return 'PRINT';
 "int"                 return 'INT';
 "float64"             return 'FLOAT64';
@@ -397,4 +398,26 @@ slice_literal
     | field_access
     | array_access
     | slice_literal = new SliceLiteral(, , @1.first_line, @1.first_column); }
+;
+    | map_literal
+slice_literal
+    : '[' ']' tipo '{' expression_list '}' {     | map_literal = new SliceLiteral(, , @1.first_line, @1.first_column); }
+;
+
+map_literal
+    : MAP '[' tipo ']' tipo '{' key_value_pairs '}' {     | map_literal = new MapLiteral(, , , @1.first_line, @1.first_column); }
+;
+
+key_value_pairs
+    : /* empty */ {     | map_literal = []; }
+    | key_value_list {     | map_literal = ; }
+;
+
+key_value_list
+    : key_value_pair {     | map_literal = []; }
+    | key_value_list ',' key_value_pair {     | map_literal = .concat(); }
+;
+
+key_value_pair
+    : expression ':' expression {     | map_literal = { key: , value:  }; }
 ;

@@ -4,6 +4,7 @@ import { TablaSimbolos } from '../Simbolo/TablaSimbolos';
 import { Tipo } from '../Simbolo/Tipo';
 import { Node } from '../Abstract/Node';
 import { tipoDato } from '../Simbolo/tipoDato';
+import { MapType } from '../Simbolo/Map';
 
 export class AccesoArreglo extends Instruccion {
     public arreglo: Instruccion;

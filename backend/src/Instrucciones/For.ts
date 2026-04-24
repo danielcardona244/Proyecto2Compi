@@ -99,3 +99,41 @@ export class For extends Instruccion {
         return node;
     }
 }
+    public setRange(var1: string, var2: string | null, expr: Instruccion): void {
+        this.isRange = true;
+        this.rangeVar1 = var1;
+        this.rangeVar2 = var2;
+        this.rangeExpression = expr;
+    }
+    private interpretarRange(arbol: Arbol, tabla: TablaSimbolos): any {
+        let tablaFor = new TablaSimbolos(tabla);
+        const collection = this.rangeExpression!.interpretar(arbol, tabla);
+        if (Array.isArray(collection)) {
+            for (let i = 0; i < collection.length; i++) {
+                if (this.rangeVar1) tablaFor.setVariable(this.rangeVar1, i, new Tipo(tipoDato.ENTERO, false));
+                if (this.rangeVar2) tablaFor.setVariable(this.rangeVar2, collection[i], new Tipo(tipoDato.ENTERO, false)); // Placeholder type
+                for (const sentencia of this.sentencias) {
+                    const resultado = sentencia.interpretar(arbol, tablaFor);
+                    if (resultado instanceof Errores) return resultado;
+                    if (this.breakFlag) {
+                        this.breakFlag = false;
+                        return null;
+                    }
+                }
+            }
+        } else if (collection instanceof MapType) {
+            for (const [key, value] of collection.values.entries()) {
+                if (this.rangeVar1) tablaFor.setVariable(this.rangeVar1, key, new Tipo(tipoDato.ENTERO, false));
+                if (this.rangeVar2) tablaFor.setVariable(this.rangeVar2, value, new Tipo(tipoDato.ENTERO, false));
+                for (const sentencia of this.sentencias) {
+                    const resultado = sentencia.interpretar(arbol, tablaFor);
+                    if (resultado instanceof Errores) return resultado;
+                    if (this.breakFlag) {
+                        this.breakFlag = false;
+                        return null;
+                    }
+                }
+            }
+        }
+        return null;
+    }
