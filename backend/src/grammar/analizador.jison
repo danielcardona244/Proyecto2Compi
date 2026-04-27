@@ -8,6 +8,7 @@ const For = require("../Instrucciones/For").For;
 const Switch = require("../Instrucciones/Switch").Switch;
 const Break = require("../Instrucciones/Break").Break;
 const Continue = require("../Instrucciones/Continue").Continue;
+const Retorno = require("../Instrucciones/Retorno").Retorno;
 const Bloque = require("../Instrucciones/Bloque").Bloque;
 const Funcion = require("../Instrucciones/Funcion").Funcion;
 const Struct = require("../Instrucciones/Struct").Struct;
@@ -110,15 +111,7 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 "("                   return '(';
 ")"                   return ')';
 "{"                   return '{';
-"}" {
-    if (!yy.injectedBraceSeparator) {
-        yy.injectedBraceSeparator = true;
-        this.unput("}");
-        return ';';
-    }
-    yy.injectedBraceSeparator = false;
-    return '}';
-}
+"}"                   return '}';
 "["                   return '[';
 "]"                   return ']';
 ","                   return ',';
@@ -146,7 +139,6 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 %left '+' '-'
 %left '*' '/' '%'
 %right '!'
-%nonassoc '(' '.' '{' IDENTIFIER
 
 %%
 
@@ -163,6 +155,7 @@ optional_statements
 statements
     : statement { $$ = [$1]; }
     | statements statement_separators statement { $$ = $1.concat($3); }
+    | statements statement { $$ = $1.concat($2); }
 ;
 
 separators
@@ -223,8 +216,8 @@ else_part
 
 for_statement
     : FOR expression '{' separators optional_statements separators '}' { $$ = new For(null, $2, null, $5, @1.first_line, @1.first_column); }
-    | FOR assignment_expression ';' expression ';' assignment_expression '{' separators optional_statements separators '}' { $$ = new For($2, $4, $6, $9, @1.first_line, @1.first_column); }
-    | FOR variable_declaration ';' expression ';' assignment_expression '{' separators optional_statements separators '}' { $$ = new For($2, $4, $6, $9, @1.first_line, @1.first_column); }
+    | FOR assignment_statement ';' expression ';' assignment_statement '{' separators optional_statements separators '}' { $$ = new For($2, $4, $6, $9, @1.first_line, @1.first_column); }
+    | FOR variable_declaration ';' expression ';' assignment_statement '{' separators optional_statements separators '}' { $$ = new For($2, $4, $6, $9, @1.first_line, @1.first_column); }
     | FOR IDENTIFIER ',' IDENTIFIER ':=' RANGE expression '{' separators optional_statements separators '}' { const f = new For(null, null, null, $10, @1.first_line, @1.first_column); f.setRange($2, $4, $7); $$ = f; }
 ;
 
@@ -317,7 +310,7 @@ print_statement
 ;
 
 return_statement
-    : RETURN return_expression { $$ = { type: 'return', value: $2 }; }
+    : RETURN return_expression { $$ = new Retorno($2, @1.first_line, @1.first_column); }
 ;
 
 return_expression
@@ -377,7 +370,10 @@ unary_expression
 ;
 
 primary_expression
-    : IDENTIFIER { $$ = new Identificador($1, @1.first_line, @1.first_column); }
+    : IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
+    | IDENTIFIER '.' IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1 + "." + $3, $5, @1.first_line, @1.first_column); }
+    | function_call
+    | IDENTIFIER { $$ = new Identificador($1, @1.first_line, @1.first_column); }
     | NUMBER { $$ = new Nativo(Number($1), new Tipo(String($1).includes('.') ? tipoDato.DECIMAL : tipoDato.ENTERO, false), @1.first_line, @1.first_column); }
     | STRING_LITERAL { $$ = new Nativo($1.slice(1, -1), new Tipo(tipoDato.CADENA, false), @1.first_line, @1.first_column); }
     | RUNE_LITERAL { $$ = new Nativo($1.slice(1, -1), new Tipo(tipoDato.CARACTER, false), @1.first_line, @1.first_column); }
@@ -385,7 +381,6 @@ primary_expression
     | FALSE { $$ = new Nativo(false, new Tipo(tipoDato.BOOLEANO, false), @1.first_line, @1.first_column); }
     | NIL { $$ = new Nativo(null, new Tipo(tipoDato.VOID, false), @1.first_line, @1.first_column); }
     | '(' expression ')' { $$ = $2; }
-    | function_call
     | field_access
     | array_access
     | slice_literal

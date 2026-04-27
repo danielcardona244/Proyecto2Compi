@@ -14,7 +14,6 @@ export class For extends Instruccion {
     public incremento: Instruccion | null;
     public sentencias: Instruccion[];
     private breakFlag: boolean = false;
-    private continueFlag: boolean = false;
     // Para for range
     public isRange: boolean = false;
     public rangeVar1: string | null = null;
@@ -60,13 +59,19 @@ export class For extends Instruccion {
             }
 
             // Ejecutar sentencias
+            let continuar = false;
             for (const sentencia of this.sentencias) {
-                if (sentencia instanceof For && sentencia.breakFlag) {
-                    sentencia.breakFlag = false;
-                    break;
-                }
                 const resultado = sentencia.interpretar(arbol, tablaFor);
                 if (resultado instanceof Errores) return resultado;
+                if (resultado === "BREAK") {
+                    this.breakFlag = true;
+                    break;
+                }
+                if (resultado === "CONTINUE") {
+                    continuar = true;
+                    break;
+                }
+                if (resultado !== null) return resultado;
             }
 
             if (this.breakFlag) {
@@ -79,6 +84,8 @@ export class For extends Instruccion {
                 const resultado = this.incremento.interpretar(arbol, tablaFor);
                 if (resultado instanceof Errores) return resultado;
             }
+
+            if (continuar) continue;
         }
 
         return null;
@@ -122,31 +129,41 @@ export class For extends Instruccion {
         const collection = this.rangeExpression!.interpretar(arbol, tabla);
         if (Array.isArray(collection)) {
             for (let i = 0; i < collection.length; i++) {
-                if (this.rangeVar1) tablaFor.setSimbolo(new Simbolo(this.rangeVar1, new Tipo(tipoDato.ENTERO, false), i, this.linea, this.columna));
-                if (this.rangeVar2) tablaFor.setSimbolo(new Simbolo(this.rangeVar2, new Tipo(tipoDato.ENTERO, false), collection[i], this.linea, this.columna)); // Placeholder type
+                this.setOrUpdate(tablaFor, this.rangeVar1, new Tipo(tipoDato.ENTERO, false), i);
+                this.setOrUpdate(tablaFor, this.rangeVar2, new Tipo(tipoDato.ENTERO, false), collection[i]);
                 for (const sentencia of this.sentencias) {
                     const resultado = sentencia.interpretar(arbol, tablaFor);
                     if (resultado instanceof Errores) return resultado;
-                    if (this.breakFlag) {
-                        this.breakFlag = false;
-                        return null;
-                    }
+                    if (resultado === "BREAK") return null;
+                    if (resultado === "CONTINUE") break;
+                    if (resultado !== null) return resultado;
                 }
             }
         } else if (collection instanceof MapType) {
             for (const [key, value] of collection.values.entries()) {
-                if (this.rangeVar1) tablaFor.setSimbolo(new Simbolo(this.rangeVar1, new Tipo(tipoDato.ENTERO, false), key, this.linea, this.columna));
-                if (this.rangeVar2) tablaFor.setSimbolo(new Simbolo(this.rangeVar2, new Tipo(tipoDato.ENTERO, false), value, this.linea, this.columna));
+                this.setOrUpdate(tablaFor, this.rangeVar1, new Tipo(tipoDato.ENTERO, false), key);
+                this.setOrUpdate(tablaFor, this.rangeVar2, new Tipo(tipoDato.ENTERO, false), value);
                 for (const sentencia of this.sentencias) {
                     const resultado = sentencia.interpretar(arbol, tablaFor);
                     if (resultado instanceof Errores) return resultado;
-                    if (this.breakFlag) {
-                        this.breakFlag = false;
-                        return null;
-                    }
+                    if (resultado === "BREAK") return null;
+                    if (resultado === "CONTINUE") break;
+                    if (resultado !== null) return resultado;
                 }
             }
         }
         return null;
+    }
+
+    private setOrUpdate(tabla: TablaSimbolos, id: string | null, tipo: Tipo, valor: any): void {
+        if (!id) return;
+        const existente = tabla.getSimbolo(id);
+        if (existente) {
+            existente.valor = valor;
+            existente.tipo = tipo;
+            tabla.actualizarSimbolo(existente);
+        } else {
+            tabla.setSimbolo(new Simbolo(id, tipo, valor, this.linea, this.columna));
+        }
     }
 }

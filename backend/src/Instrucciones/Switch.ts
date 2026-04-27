@@ -25,35 +25,29 @@ export class Switch extends Instruccion {
         const valorSwitch = this.expresion.interpretar(arbol, tabla);
         if (valorSwitch instanceof Errores) return valorSwitch;
 
-        let encontrado = false;
+        let defaultCase: Case | null = null;
         for (const caso of this.casos) {
-            if (encontrado || caso.valor === null) {
-                // Ejecutar sentencias si ya encontramos match o es default
-                for (const sentencia of caso.sentencias) {
-                    const resultado = sentencia.interpretar(arbol, tabla);
-                    if (resultado === "BREAK") {
-                        return null;
-                    }
-                    if (resultado instanceof Errores) return resultado;
-                }
-                encontrado = true;
-            } else {
-                const valorCaso = caso.valor.interpretar(arbol, tabla);
-                if (valorCaso instanceof Errores) return valorCaso;
-                
-                if (valorSwitch === valorCaso) {
-                    encontrado = true;
-                    for (const sentencia of caso.sentencias) {
-                        const resultado = sentencia.interpretar(arbol, tabla);
-                        if (resultado === "BREAK") {
-                            return null;
-                        }
-                        if (resultado instanceof Errores) return resultado;
-                    }
-                }
+            if (caso.valor === null) {
+                defaultCase = caso;
+                continue;
             }
+
+            const valorCaso = caso.valor.interpretar(arbol, tabla);
+            if (valorCaso instanceof Errores) return valorCaso;
+            if (valorSwitch === valorCaso) return this.ejecutarCaso(caso, arbol, tabla);
         }
 
+        return defaultCase ? this.ejecutarCaso(defaultCase, arbol, tabla) : null;
+    }
+
+    private ejecutarCaso(caso: Case, arbol: Arbol, tabla: TablaSimbolos): any {
+        const tablaSwitch = new TablaSimbolos(tabla);
+        for (const sentencia of caso.sentencias) {
+            const resultado = sentencia.interpretar(arbol, tablaSwitch);
+            if (resultado === "BREAK") return null;
+            if (resultado instanceof Errores) return resultado;
+            if (resultado !== null) return resultado;
+        }
         return null;
     }
 

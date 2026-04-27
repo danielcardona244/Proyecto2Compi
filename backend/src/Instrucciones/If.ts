@@ -30,15 +30,19 @@ export class If extends Instruccion {
             return condicion;
         }
 
+        const tablaIf = new TablaSimbolos(tabla);
         if (this.isTruthy(condicion)) {
             for (const sentencia of this.sentencias_if) {
-                const resultado = sentencia.interpretar(arbol, tabla);
+                const resultado = sentencia.interpretar(arbol, tablaIf);
                 if (resultado instanceof Errores) return resultado;
+                if (resultado !== null) return resultado;
             }
         } else if (this.sentencias_else !== null) {
+            const tablaElse = new TablaSimbolos(tabla);
             for (const sentencia of this.sentencias_else) {
-                const resultado = sentencia.interpretar(arbol, tabla);
+                const resultado = sentencia.interpretar(arbol, tablaElse);
                 if (resultado instanceof Errores) return resultado;
+                if (resultado !== null) return resultado;
             }
         }
         return null;
