@@ -6,5 +6,6 @@ export enum tipoDato {
     CARACTER = "CARACTER",
     VOID = "VOID",
     SLICE = "SLICE",
-    MAP = "MAP"
+    MAP = "MAP",
+    STRUCT = "STRUCT"
 }

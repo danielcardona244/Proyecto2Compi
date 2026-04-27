@@ -5,12 +5,14 @@ export class TablaSimbolos {
     public funciones: Map<string, any>;
     public structs: Map<string, any>;
     public padre: TablaSimbolos | null;
+    public nombre: string;
 
-    constructor(padre: TablaSimbolos | null = null) {
+    constructor(padre: TablaSimbolos | null = null, nombre: string = padre ? "Local" : "Global") {
         this.simbolos = new Map();
         this.funciones = new Map();
         this.structs = new Map();
         this.padre = padre;
+        this.nombre = nombre;
     }
 
     public setSimbolo(simbolo: Simbolo): boolean {

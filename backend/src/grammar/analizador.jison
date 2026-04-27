@@ -30,6 +30,8 @@ const LlamadaFuncion = require("../Expresiones/LlamadaFuncion").LlamadaFuncion;
 const AccesoCampo = require("../Expresiones/AccesoCampo").AccesoCampo;
 const AccesoArreglo = require("../Expresiones/AccesoArreglo").AccesoArreglo;
 const SliceLiteral = require("../Expresiones/SliceLiteral").SliceLiteral;
+const StructLiteral = require("../Expresiones/StructLiteral").StructLiteral;
+const ListaLiteral = require("../Expresiones/ListaLiteral").ListaLiteral;
 const MapLiteral = require("../Expresiones/MapLiteral").MapLiteral;
 const Modulo = require("../Expresiones/Modulo").Modulo;
 const Logica = require("../Expresiones/Logica").Logica;
@@ -70,6 +72,11 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 "nil"                 return 'NIL';
 "map"                 return 'MAP';
 "fmt.Println"         return 'PRINTLN';
+"slices.Index"        return 'BUILTIN_METHOD';
+"strings.Join"        return 'BUILTIN_METHOD';
+"strconv.Atoi"        return 'BUILTIN_METHOD';
+"strconv.ParseFloat"  return 'BUILTIN_METHOD';
+"reflect.TypeOf"      return 'BUILTIN_METHOD';
 "int"                 return 'INT';
 "float64"             return 'FLOAT64';
 "string"              return 'STRING_TYPE';
@@ -218,11 +225,32 @@ for_statement
     : FOR expression '{' separators optional_statements separators '}' { $$ = new For(null, $2, null, $5, @1.first_line, @1.first_column); }
     | FOR assignment_statement ';' expression ';' assignment_statement '{' separators optional_statements separators '}' { $$ = new For($2, $4, $6, $9, @1.first_line, @1.first_column); }
     | FOR variable_declaration ';' expression ';' assignment_statement '{' separators optional_statements separators '}' { $$ = new For($2, $4, $6, $9, @1.first_line, @1.first_column); }
-    | FOR IDENTIFIER ',' IDENTIFIER ':=' RANGE expression '{' separators optional_statements separators '}' { const f = new For(null, null, null, $10, @1.first_line, @1.first_column); f.setRange($2, $4, $7); $$ = f; }
+    | FOR IDENTIFIER ',' IDENTIFIER ':=' RANGE range_expression '{' separators optional_statements separators '}' { const f = new For(null, null, null, $10, @1.first_line, @1.first_column); f.setRange($2, $4, $7); $$ = f; }
+;
+
+range_expression
+    : IDENTIFIER { $$ = new Identificador($1, @1.first_line, @1.first_column); }
+    | IDENTIFIER '[' expression ']' { $$ = new AccesoArreglo(new Identificador($1, @1.first_line, @1.first_column), $3, @1.first_line, @1.first_column); }
+    | IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
+    | BUILTIN_METHOD '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
+    | slice_literal { $$ = $1; }
 ;
 
 switch_statement
-    : SWITCH expression '{' case_clauses '}' { $$ = new Switch($2, $4, @1.first_line, @1.first_column); }
+    : SWITCH switch_expression '{' case_clauses '}' { $$ = new Switch($2, $4, @1.first_line, @1.first_column); }
+;
+
+switch_expression
+    : IDENTIFIER { $$ = new Identificador($1, @1.first_line, @1.first_column); }
+    | NUMBER { $$ = new Nativo(Number($1), new Tipo(String($1).includes('.') ? tipoDato.DECIMAL : tipoDato.ENTERO, false), @1.first_line, @1.first_column); }
+    | STRING_LITERAL { $$ = new Nativo($1.slice(1, -1), new Tipo(tipoDato.CADENA, false), @1.first_line, @1.first_column); }
+    | RUNE_LITERAL { $$ = new Nativo($1.slice(1, -1), new Tipo(tipoDato.CARACTER, false), @1.first_line, @1.first_column); }
+    | TRUE { $$ = new Nativo(true, new Tipo(tipoDato.BOOLEANO, false), @1.first_line, @1.first_column); }
+    | FALSE { $$ = new Nativo(false, new Tipo(tipoDato.BOOLEANO, false), @1.first_line, @1.first_column); }
+    | IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
+    | BUILTIN_METHOD '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
+    | IDENTIFIER '[' expression ']' { $$ = new AccesoArreglo(new Identificador($1, @1.first_line, @1.first_column), $3, @1.first_line, @1.first_column); }
+    | IDENTIFIER '.' IDENTIFIER { $$ = new AccesoCampo(new Identificador($1, @1.first_line, @1.first_column), $3, @1.first_line, @1.first_column); }
 ;
 
 case_clauses
@@ -288,6 +316,7 @@ tipo
     | BOOL { $$ = new Tipo(tipoDato.BOOLEANO, false); }
     | RUNE { $$ = new Tipo(tipoDato.CARACTER, false); }
     | '[' ']' tipo { $$ = new Tipo(tipoDato.SLICE, false, $3); }
+    | IDENTIFIER { $$ = new Tipo(tipoDato.STRUCT, false, undefined, $1); }
 ;
 
 assignment_statement
@@ -297,6 +326,8 @@ assignment_statement
     | IDENTIFIER '*=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '*='); }
     | IDENTIFIER '/=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '/='); }
     | IDENTIFIER '%=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '%='); }
+    | array_access '=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '='); }
+    | field_access '=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '='); }
 ;
 
 expression_statement
@@ -305,8 +336,6 @@ expression_statement
 
 print_statement
     : PRINTLN '(' arguments ')' { $$ = new LlamadaFuncion("fmt.Println", $3, @1.first_line, @1.first_column); }
-    | IDENTIFIER '.' IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1 + "." + $3, $5, @1.first_line, @1.first_column); }
-    | IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
 ;
 
 return_statement
@@ -370,9 +399,7 @@ unary_expression
 ;
 
 primary_expression
-    : IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
-    | IDENTIFIER '.' IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1 + "." + $3, $5, @1.first_line, @1.first_column); }
-    | function_call
+    : function_call
     | IDENTIFIER { $$ = new Identificador($1, @1.first_line, @1.first_column); }
     | NUMBER { $$ = new Nativo(Number($1), new Tipo(String($1).includes('.') ? tipoDato.DECIMAL : tipoDato.ENTERO, false), @1.first_line, @1.first_column); }
     | STRING_LITERAL { $$ = new Nativo($1.slice(1, -1), new Tipo(tipoDato.CADENA, false), @1.first_line, @1.first_column); }
@@ -384,12 +411,14 @@ primary_expression
     | field_access
     | array_access
     | slice_literal
+    | struct_literal
+    | list_literal
     | map_literal
 ;
 
 function_call
     : IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
-    | IDENTIFIER '.' IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1 + "." + $3, $5, @1.first_line, @1.first_column); }
+    | BUILTIN_METHOD '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
 ;
 
 arguments
@@ -413,6 +442,25 @@ array_access
 slice_literal
     : '[' ']' tipo '{' expression_list '}' { $$ = new SliceLiteral($3, $5, @1.first_line, @1.first_column); }
     | '[' ']' tipo '{' '}' { $$ = new SliceLiteral($3, [], @1.first_line, @1.first_column); }
+;
+
+list_literal
+    : '{' expression_list '}' { $$ = new ListaLiteral($2, @1.first_line, @1.first_column); }
+    | '{' '}' { $$ = new ListaLiteral([], @1.first_line, @1.first_column); }
+;
+
+struct_literal
+    : IDENTIFIER '{' field_values '}' { $$ = new StructLiteral($1, $3, @1.first_line, @1.first_column); }
+    | '{' field_values '}' { $$ = new StructLiteral(null, $2, @1.first_line, @1.first_column); }
+;
+
+field_values
+    : field_value { $$ = [$1]; }
+    | field_values ',' field_value { $$ = $1.concat($3); }
+;
+
+field_value
+    : IDENTIFIER ':' expression { $$ = { nombre: $1, valor: $3 }; }
 ;
 
 map_literal

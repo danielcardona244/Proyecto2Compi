@@ -3,6 +3,9 @@ import { Arbol } from "../src/Simbolo/Arbol";
 import { TablaSimbolos } from "../src/Simbolo/TablaSimbolos";
 import { Funcion } from "../src/Instrucciones/Funcion";
 import { Struct } from "../src/Instrucciones/Struct";
+import { Simbolo } from "../src/Simbolo/Simbolo";
+import { Tipo } from "../src/Simbolo/Tipo";
+import { tipoDato } from "../src/Simbolo/tipoDato";
 
 export const analizar = (req: any, res: any) => {
     const { codigo, interpretar } = req.body;
@@ -22,6 +25,8 @@ export const analizar = (req: any, res: any) => {
         for (const instruccion of instrucciones) {
             if (instruccion instanceof Funcion || instruccion instanceof Struct) {
                 instruccion.interpretar(arbol, tabla);
+                const tipoSimbolo = instruccion instanceof Funcion ? "Funcion" : "Struct";
+                arbol.simbolos.push(new Simbolo(instruccion.nombre, new Tipo(tipoDato.VOID, false), null, instruccion.linea, instruccion.columna, tipoSimbolo, tabla.nombre));
             }
         }
 
@@ -29,7 +34,7 @@ export const analizar = (req: any, res: any) => {
         const mainFunc = tabla.getFuncion('main');
         if (mainFunc) {
             // Crear nueva tabla para el scope de main
-            const tablaMain = new TablaSimbolos(tabla);
+            const tablaMain = new TablaSimbolos(tabla, "main");
             // Ejecutar instrucciones de main
             for (const instr of mainFunc.instrucciones) {
                 const resultado = instr.interpretar(arbol, tablaMain);
@@ -62,7 +67,9 @@ export const analizar = (req: any, res: any) => {
             errores: errores,
             simbolos: arbol.simbolos.map(s => ({
                 id: s.id,
+                tipoSimbolo: s.tipoSimbolo,
                 tipo: s.tipo.tipoDato,
+                ambito: s.ambito,
                 valor: s.valor,
                 linea: s.linea,
                 columna: s.columna
@@ -128,12 +135,33 @@ export const getSimbolos = (req: any, res: any) => {
 
         // Ejecutar para poblar tabla
         for (const instruccion of instrucciones) {
-            instruccion.interpretar(arbol, tabla);
+            if (instruccion instanceof Funcion || instruccion instanceof Struct) {
+                instruccion.interpretar(arbol, tabla);
+                const tipoSimbolo = instruccion instanceof Funcion ? "Funcion" : "Struct";
+                arbol.simbolos.push(new Simbolo(instruccion.nombre, new Tipo(tipoDato.VOID, false), null, instruccion.linea, instruccion.columna, tipoSimbolo, tabla.nombre));
+            }
+        }
+
+        const mainFunc = tabla.getFuncion("main");
+        if (mainFunc) {
+            const tablaMain = new TablaSimbolos(tabla, "main");
+            for (const instr of mainFunc.instrucciones) {
+                const resultado = instr.interpretar(arbol, tablaMain);
+                if (resultado !== null) break;
+            }
+        } else {
+            for (const instruccion of instrucciones) {
+                if (!(instruccion instanceof Funcion) && !(instruccion instanceof Struct)) {
+                    instruccion.interpretar(arbol, tabla);
+                }
+            }
         }
 
         const simbolos = arbol.simbolos.map(s => ({
             id: s.id,
+            tipoSimbolo: s.tipoSimbolo,
             tipo: s.tipo.tipoDato,
+            ambito: s.ambito,
             valor: s.valor,
             linea: s.linea,
             columna: s.columna

@@ -19,13 +19,15 @@ export class LlamadaFuncion extends Instruccion {
     public interpretar(arbol: Arbol, tabla: TablaSimbolos): any {
         const funcion = tabla.getFuncion(this.nombre);
         if (funcion) {
-            const nuevaTabla = new TablaSimbolos(tabla);
+            const nuevaTabla = new TablaSimbolos(tabla, funcion.nombre);
 
             for (let i = 0; i < funcion.parametros.length; i++) {
                 const parametro = funcion.parametros[i];
                 const argumento = this.argumentos[i];
                 const valor = argumento ? argumento.interpretar(arbol, tabla) : null;
-                nuevaTabla.setSimbolo(new Simbolo(parametro.nombre, parametro.tipo, valor, this.linea, this.columna));
+                const simbolo = new Simbolo(parametro.nombre, parametro.tipo, valor, this.linea, this.columna, "Parametro", funcion.nombre);
+                nuevaTabla.setSimbolo(simbolo);
+                arbol.simbolos.push(simbolo);
             }
 
             for (const instr of funcion.instrucciones) {
@@ -95,6 +97,14 @@ export class LlamadaFuncion extends Instruccion {
     private formatear(valor: any): string {
         if (valor === null || valor === undefined) return "nil";
         if (Array.isArray(valor)) return `[${valor.map(item => this.formatear(item)).join(" ")}]`;
+        if (typeof valor === "object") {
+            const nombre = valor.__structName || "struct";
+            const campos = Object.entries(valor)
+                .filter(([key]) => key !== "__structName")
+                .map(([key, value]) => `${key}: ${this.formatear(value)}`)
+                .join(" ");
+            return `${nombre}{${campos}}`;
+        }
         return String(valor);
     }
 }

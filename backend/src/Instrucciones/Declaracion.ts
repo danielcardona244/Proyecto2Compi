@@ -29,11 +29,12 @@ export class Declaracion extends Instruccion {
         }
 
         const tipoFinal = this.tipoDeclarado === tipoDato.VOID ? this.inferirTipo(valorInterpretado) : this.tipoDeclarado;
-        let simbolo = new Simbolo(this.id, new Tipo(tipoFinal, false), valorInterpretado, this.linea, this.columna);
+        let simbolo = new Simbolo(this.id, new Tipo(tipoFinal, false), valorInterpretado, this.linea, this.columna, "Variable", tabla.nombre);
         if (!tabla.setSimbolo(simbolo)) {
             arbol.errores.push(new Errores("SEMANTICO", `Variable ${this.id} ya declarada`, this.linea, this.columna));
             return null;
         }
+        arbol.simbolos.push(simbolo);
         return null;
     }
 
@@ -55,7 +56,9 @@ export class Declaracion extends Instruccion {
         } else if (typeof valor === 'boolean') {
             return tipoDato.BOOLEANO;
         } else if (Array.isArray(valor)) {
-            return tipoDato.ENTERO; // Placeholder for slice
+            return tipoDato.SLICE;
+        } else if (valor && typeof valor === 'object') {
+            return tipoDato.STRUCT;
         }
         return tipoDato.VOID;
     }
@@ -73,6 +76,7 @@ export class Declaracion extends Instruccion {
                 return false;
             case tipoDato.SLICE:
             case tipoDato.MAP:
+            case tipoDato.STRUCT:
             case tipoDato.VOID:
             default:
                 return null;

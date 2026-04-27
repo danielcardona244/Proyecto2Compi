@@ -41,7 +41,7 @@ export class For extends Instruccion {
         }
 
         // Crear nuevo scope para el for
-        let tablaFor = new TablaSimbolos(tabla);
+        let tablaFor = new TablaSimbolos(tabla, "For");
 
         // Ejecutar inicial
         if (this.inicial !== null) {
@@ -125,12 +125,12 @@ export class For extends Instruccion {
     }
 
     private interpretarRange(arbol: Arbol, tabla: TablaSimbolos): any {
-        let tablaFor = new TablaSimbolos(tabla);
+        let tablaFor = new TablaSimbolos(tabla, "ForRange");
         const collection = this.rangeExpression!.interpretar(arbol, tabla);
         if (Array.isArray(collection)) {
             for (let i = 0; i < collection.length; i++) {
-                this.setOrUpdate(tablaFor, this.rangeVar1, new Tipo(tipoDato.ENTERO, false), i);
-                this.setOrUpdate(tablaFor, this.rangeVar2, new Tipo(tipoDato.ENTERO, false), collection[i]);
+                this.setOrUpdate(arbol, tablaFor, this.rangeVar1, new Tipo(tipoDato.ENTERO, false), i);
+                this.setOrUpdate(arbol, tablaFor, this.rangeVar2, new Tipo(tipoDato.ENTERO, false), collection[i]);
                 for (const sentencia of this.sentencias) {
                     const resultado = sentencia.interpretar(arbol, tablaFor);
                     if (resultado instanceof Errores) return resultado;
@@ -141,8 +141,8 @@ export class For extends Instruccion {
             }
         } else if (collection instanceof MapType) {
             for (const [key, value] of collection.values.entries()) {
-                this.setOrUpdate(tablaFor, this.rangeVar1, new Tipo(tipoDato.ENTERO, false), key);
-                this.setOrUpdate(tablaFor, this.rangeVar2, new Tipo(tipoDato.ENTERO, false), value);
+                this.setOrUpdate(arbol, tablaFor, this.rangeVar1, new Tipo(tipoDato.ENTERO, false), key);
+                this.setOrUpdate(arbol, tablaFor, this.rangeVar2, new Tipo(tipoDato.ENTERO, false), value);
                 for (const sentencia of this.sentencias) {
                     const resultado = sentencia.interpretar(arbol, tablaFor);
                     if (resultado instanceof Errores) return resultado;
@@ -155,7 +155,7 @@ export class For extends Instruccion {
         return null;
     }
 
-    private setOrUpdate(tabla: TablaSimbolos, id: string | null, tipo: Tipo, valor: any): void {
+    private setOrUpdate(arbol: Arbol, tabla: TablaSimbolos, id: string | null, tipo: Tipo, valor: any): void {
         if (!id) return;
         const existente = tabla.getSimbolo(id);
         if (existente) {
@@ -163,7 +163,11 @@ export class For extends Instruccion {
             existente.tipo = tipo;
             tabla.actualizarSimbolo(existente);
         } else {
-            tabla.setSimbolo(new Simbolo(id, tipo, valor, this.linea, this.columna));
+            const simbolo = new Simbolo(id, tipo, valor, this.linea, this.columna, "Variable", tabla.nombre);
+            tabla.setSimbolo(simbolo);
+            if (!arbol.simbolos.some(s => s.id === id && s.ambito === tabla.nombre && s.linea === this.linea && s.columna === this.columna)) {
+                arbol.simbolos.push(simbolo);
+            }
         }
     }
 }
