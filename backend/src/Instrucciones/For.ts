@@ -60,8 +60,9 @@ export class For extends Instruccion {
 
             // Ejecutar sentencias
             let continuar = false;
+            const tablaCuerpo = new TablaSimbolos(tablaFor, "ForBody");
             for (const sentencia of this.sentencias) {
-                const resultado = sentencia.interpretar(arbol, tablaFor);
+                const resultado = sentencia.interpretar(arbol, tablaCuerpo);
                 if (resultado instanceof Errores) return resultado;
                 if (resultado === "BREAK") {
                     this.breakFlag = true;
@@ -127,12 +128,13 @@ export class For extends Instruccion {
     private interpretarRange(arbol: Arbol, tabla: TablaSimbolos): any {
         let tablaFor = new TablaSimbolos(tabla, "ForRange");
         const collection = this.rangeExpression!.interpretar(arbol, tabla);
-        if (Array.isArray(collection)) {
+        if (Array.isArray(collection) || typeof collection === "string") {
             for (let i = 0; i < collection.length; i++) {
                 this.setOrUpdate(arbol, tablaFor, this.rangeVar1, new Tipo(tipoDato.ENTERO, false), i);
-                this.setOrUpdate(arbol, tablaFor, this.rangeVar2, new Tipo(tipoDato.ENTERO, false), collection[i]);
+                this.setOrUpdate(arbol, tablaFor, this.rangeVar2, new Tipo(Array.isArray(collection) ? tipoDato.ENTERO : tipoDato.CARACTER, false), collection[i]);
+                const tablaCuerpo = new TablaSimbolos(tablaFor, "ForRangeBody");
                 for (const sentencia of this.sentencias) {
-                    const resultado = sentencia.interpretar(arbol, tablaFor);
+                    const resultado = sentencia.interpretar(arbol, tablaCuerpo);
                     if (resultado instanceof Errores) return resultado;
                     if (resultado === "BREAK") return null;
                     if (resultado === "CONTINUE") break;
@@ -143,8 +145,9 @@ export class For extends Instruccion {
             for (const [key, value] of collection.values.entries()) {
                 this.setOrUpdate(arbol, tablaFor, this.rangeVar1, new Tipo(tipoDato.ENTERO, false), key);
                 this.setOrUpdate(arbol, tablaFor, this.rangeVar2, new Tipo(tipoDato.ENTERO, false), value);
+                const tablaCuerpo = new TablaSimbolos(tablaFor, "ForRangeBody");
                 for (const sentencia of this.sentencias) {
-                    const resultado = sentencia.interpretar(arbol, tablaFor);
+                    const resultado = sentencia.interpretar(arbol, tablaCuerpo);
                     if (resultado instanceof Errores) return resultado;
                     if (resultado === "BREAK") return null;
                     if (resultado === "CONTINUE") break;

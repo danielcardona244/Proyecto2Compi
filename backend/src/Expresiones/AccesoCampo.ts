@@ -17,6 +17,9 @@ export class AccesoCampo extends Instruccion {
 
     public interpretar(arbol: Arbol, tabla: TablaSimbolos): any {
         let obj = this.objeto.interpretar(arbol, tabla);
+        if (this.campo === 'string' && typeof obj === 'string') {
+            return obj;
+        }
         if (obj && typeof obj === 'object' && obj[this.campo] !== undefined) {
             return obj[this.campo];
         }

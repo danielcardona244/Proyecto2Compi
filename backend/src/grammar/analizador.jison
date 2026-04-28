@@ -12,6 +12,7 @@ const Retorno = require("../Instrucciones/Retorno").Retorno;
 const Bloque = require("../Instrucciones/Bloque").Bloque;
 const Funcion = require("../Instrucciones/Funcion").Funcion;
 const Struct = require("../Instrucciones/Struct").Struct;
+const ExpresionStatement = require("../Instrucciones/ExpresionStatement").ExpresionStatement;
 
 // Expresiones
 const Nativo = require("../Expresiones/Nativo").Nativo;
@@ -66,6 +67,7 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 "break"               return 'BREAK';
 "continue"            return 'CONTINUE';
 "return"              return 'RETURN';
+"type"                return 'TYPE';
 "struct"              return 'STRUCT';
 "true"                return 'TRUE';
 "false"               return 'FALSE';
@@ -127,11 +129,9 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 ":"                   return ':';
 
 . {
-    console.log("Car�cter no reconocido: " + yytext);
     if (typeof yy.errorCollector !== 'undefined') {
         yy.errorCollector.addLexicalError("Car�cter no reconocido: " + yytext, yylloc.first_line, yylloc.first_column);
     }
-    return 'INVALID_TOKEN';
 }
 
 <<EOF>>               return 'EOF';
@@ -150,7 +150,12 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 %%
 
 program
-    : separators optional_statements separators EOF { return $2; }
+    : separators optional_statements separators trailing_closings EOF { return $2; }
+;
+
+trailing_closings
+    : /* empty */
+    | trailing_closings '}' separators
 ;
 
 optional_statements
@@ -207,7 +212,9 @@ variable_declaration
     | VAR IDENTIFIER RUNE '=' expression { $$ = new Declaracion(tipoDato.CARACTER, $2, $5, @1.first_line, @1.first_column); }
     | VAR IDENTIFIER RUNE { $$ = new Declaracion(tipoDato.CARACTER, $2, null, @1.first_line, @1.first_column); }
     | VAR IDENTIFIER tipo { $$ = new Declaracion($3.tipoDato, $2, null, @1.first_line, @1.first_column); }
+    | VAR IDENTIFIER tipo '=' struct_literal { $$ = new Declaracion($3.tipoDato, $2, $5, @1.first_line, @1.first_column); }
     | VAR IDENTIFIER tipo '=' expression { $$ = new Declaracion($3.tipoDato, $2, $5, @1.first_line, @1.first_column); }
+    | IDENTIFIER ':=' struct_literal { $$ = new Declaracion(tipoDato.VOID, $1, $3, @1.first_line, @1.first_column); }
     | IDENTIFIER ':=' expression { $$ = new Declaracion(tipoDato.VOID, $1, $3, @1.first_line, @1.first_column); }
 ;
 
@@ -237,7 +244,7 @@ range_expression
 ;
 
 switch_statement
-    : SWITCH switch_expression '{' case_clauses '}' { $$ = new Switch($2, $4, @1.first_line, @1.first_column); }
+    : SWITCH switch_expression '{' separators case_clauses separators '}' { $$ = new Switch($2, $5, @1.first_line, @1.first_column); }
 ;
 
 switch_expression
@@ -277,6 +284,7 @@ function_declaration
 
 struct_declaration
     : STRUCT IDENTIFIER '{' separators field_declarations separators '}' { $$ = new Struct($2, $5, @1.first_line, @1.first_column); }
+    | TYPE IDENTIFIER STRUCT '{' separators field_declarations separators '}' { $$ = new Struct($2, $6, @1.first_line, @1.first_column); }
 ;
 
 parameters
@@ -320,7 +328,8 @@ tipo
 ;
 
 assignment_statement
-    : IDENTIFIER '=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '='); }
+    : IDENTIFIER '=' struct_literal { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '='); }
+    | IDENTIFIER '=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '='); }
     | IDENTIFIER '+=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '+='); }
     | IDENTIFIER '-=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '-='); }
     | IDENTIFIER '*=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '*='); }
@@ -331,7 +340,7 @@ assignment_statement
 ;
 
 expression_statement
-    : expression { $$ = $1; }
+    : expression { $$ = new ExpresionStatement($1, @1.first_line, @1.first_column); }
 ;
 
 print_statement
@@ -411,7 +420,6 @@ primary_expression
     | field_access
     | array_access
     | slice_literal
-    | struct_literal
     | list_literal
     | map_literal
 ;
@@ -419,6 +427,10 @@ primary_expression
 function_call
     : IDENTIFIER '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
     | BUILTIN_METHOD '(' arguments ')' { $$ = new LlamadaFuncion($1, $3, @1.first_line, @1.first_column); }
+    | INT '(' arguments ')' { $$ = new LlamadaFuncion("int", $3, @1.first_line, @1.first_column); }
+    | FLOAT64 '(' arguments ')' { $$ = new LlamadaFuncion("float64", $3, @1.first_line, @1.first_column); }
+    | STRING_TYPE '(' arguments ')' { $$ = new LlamadaFuncion("string", $3, @1.first_line, @1.first_column); }
+    | BOOL '(' arguments ')' { $$ = new LlamadaFuncion("bool", $3, @1.first_line, @1.first_column); }
 ;
 
 arguments
@@ -429,10 +441,20 @@ arguments
 expression_list
     : expression { $$ = [$1]; }
     | expression_list ',' expression { $$ = $1.concat($3); }
+    | expression_list ',' separators expression { $$ = $1.concat($4); }
 ;
 
 field_access
-    : primary_expression '.' IDENTIFIER { $$ = new AccesoCampo($1, $3, @1.first_line, @1.first_column); }
+    : primary_expression '.' field_name { $$ = new AccesoCampo($1, $3, @1.first_line, @1.first_column); }
+;
+
+field_name
+    : IDENTIFIER { $$ = $1; }
+    | STRING_TYPE { $$ = "string"; }
+    | INT { $$ = "int"; }
+    | FLOAT64 { $$ = "float64"; }
+    | BOOL { $$ = "bool"; }
+    | RUNE { $$ = "rune"; }
 ;
 
 array_access
@@ -441,11 +463,15 @@ array_access
 
 slice_literal
     : '[' ']' tipo '{' expression_list '}' { $$ = new SliceLiteral($3, $5, @1.first_line, @1.first_column); }
+    | '[' ']' tipo '{' separators expression_list separators '}' { $$ = new SliceLiteral($3, $6, @1.first_line, @1.first_column); }
+    | '[' ']' tipo '{' separators expression_list ',' separators '}' { $$ = new SliceLiteral($3, $6, @1.first_line, @1.first_column); }
     | '[' ']' tipo '{' '}' { $$ = new SliceLiteral($3, [], @1.first_line, @1.first_column); }
 ;
 
 list_literal
     : '{' expression_list '}' { $$ = new ListaLiteral($2, @1.first_line, @1.first_column); }
+    | '{' separators expression_list separators '}' { $$ = new ListaLiteral($3, @1.first_line, @1.first_column); }
+    | '{' separators expression_list ',' separators '}' { $$ = new ListaLiteral($3, @1.first_line, @1.first_column); }
     | '{' '}' { $$ = new ListaLiteral([], @1.first_line, @1.first_column); }
 ;
 
@@ -460,7 +486,8 @@ field_values
 ;
 
 field_value
-    : IDENTIFIER ':' expression { $$ = { nombre: $1, valor: $3 }; }
+    : IDENTIFIER ':' struct_literal { $$ = { nombre: $1, valor: $3 }; }
+    | IDENTIFIER ':' expression { $$ = { nombre: $1, valor: $3 }; }
 ;
 
 map_literal

@@ -91,6 +91,22 @@ export class LlamadaFuncion extends Instruccion {
             if (typeof valor === "string") return "string";
             return "struct";
         }
+        if (this.nombre === 'int') {
+            const valor = this.argumentos[0]?.interpretar(arbol, tabla);
+            return Math.trunc(Number(valor));
+        }
+        if (this.nombre === 'float64') {
+            const valor = this.argumentos[0]?.interpretar(arbol, tabla);
+            return Number(valor);
+        }
+        if (this.nombre === 'string') {
+            const valor = this.argumentos[0]?.interpretar(arbol, tabla);
+            return String(valor);
+        }
+        if (this.nombre === 'bool') {
+            const valor = this.argumentos[0]?.interpretar(arbol, tabla);
+            return Boolean(valor);
+        }
         return null;
     }
 

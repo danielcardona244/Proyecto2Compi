@@ -6,6 +6,7 @@ import { Struct } from "../src/Instrucciones/Struct";
 import { Simbolo } from "../src/Simbolo/Simbolo";
 import { Tipo } from "../src/Simbolo/Tipo";
 import { tipoDato } from "../src/Simbolo/tipoDato";
+import { ErrorCollector } from "../src/errors/errorCollector";
 
 export const analizar = (req: any, res: any) => {
     const { codigo, interpretar } = req.body;
@@ -15,7 +16,8 @@ export const analizar = (req: any, res: any) => {
         let consola: string = "";
 
         // Parsear el código
-        const instrucciones = parser.parse(codigo);
+        const errorCollector = new ErrorCollector();
+        const instrucciones = parser.parse(codigo, errorCollector);
 
         // Crear árbol y tabla de símbolos
         const arbol = new Arbol(instrucciones);
@@ -27,6 +29,12 @@ export const analizar = (req: any, res: any) => {
                 instruccion.interpretar(arbol, tabla);
                 const tipoSimbolo = instruccion instanceof Funcion ? "Funcion" : "Struct";
                 arbol.simbolos.push(new Simbolo(instruccion.nombre, new Tipo(tipoDato.VOID, false), null, instruccion.linea, instruccion.columna, tipoSimbolo, tabla.nombre));
+            }
+        }
+        for (const instruccion of instrucciones) {
+            if (!(instruccion instanceof Funcion) && !(instruccion instanceof Struct)) {
+                const resultado = instruccion.interpretar(arbol, tabla);
+                if (resultado instanceof Error) errores.push(resultado);
             }
         }
 
@@ -41,25 +49,22 @@ export const analizar = (req: any, res: any) => {
                 if (resultado !== null) break; // Si hay return
             }
         } else {
-            // Si no hay main, ejecutar todas las instrucciones como antes
-            for (const instruccion of instrucciones) {
-                if (!(instruccion instanceof Funcion) && !(instruccion instanceof Struct)) {
-                    const resultado = instruccion.interpretar(arbol, tabla);
-                    if (resultado instanceof Error) {
-                        errores.push(resultado);
-                    }
-                }
-            }
+            arbol.errores.push({ tipo: "SEMANTICO", descripcion: "Funcion main no definida", linea: 1, columna: 1 } as any);
         }
 
         // Obtener la salida
         consola = arbol.consola;
-        errores = arbol.errores.map(err => ({
+        errores = errorCollector.getErrors().map(err => ({
+            tipo: err.type === "lexical" ? "Lexico" : err.type === "syntactic" ? "Sintactico" : "Semantico",
+            descripcion: err.description,
+            linea: err.line,
+            columna: err.column
+        })).concat(arbol.errores.map(err => ({
             tipo: err.tipo,
             descripcion: err.descripcion,
             linea: err.linea,
             columna: err.columna
-        }));
+        })));
 
         res.status(200).json({
             estado: 'exito',
@@ -88,7 +93,8 @@ export const getAST = (req: any, res: any) => {
     const { codigo } = req.body;
 
     try {
-        const instrucciones = parser.parse(codigo);
+        const errorCollector = new ErrorCollector();
+        const instrucciones = parser.parse(codigo, errorCollector);
         const arbol = new Arbol(instrucciones);
         const tabla = arbol.tablaGlobal;
 
@@ -129,7 +135,8 @@ export const getSimbolos = (req: any, res: any) => {
     const { codigo } = req.body;
 
     try {
-        const instrucciones = parser.parse(codigo);
+        const errorCollector = new ErrorCollector();
+        const instrucciones = parser.parse(codigo, errorCollector);
         const arbol = new Arbol(instrucciones);
         const tabla = arbol.tablaGlobal;
 
@@ -141,6 +148,11 @@ export const getSimbolos = (req: any, res: any) => {
                 arbol.simbolos.push(new Simbolo(instruccion.nombre, new Tipo(tipoDato.VOID, false), null, instruccion.linea, instruccion.columna, tipoSimbolo, tabla.nombre));
             }
         }
+        for (const instruccion of instrucciones) {
+            if (!(instruccion instanceof Funcion) && !(instruccion instanceof Struct)) {
+                instruccion.interpretar(arbol, tabla);
+            }
+        }
 
         const mainFunc = tabla.getFuncion("main");
         if (mainFunc) {
@@ -148,12 +160,6 @@ export const getSimbolos = (req: any, res: any) => {
             for (const instr of mainFunc.instrucciones) {
                 const resultado = instr.interpretar(arbol, tablaMain);
                 if (resultado !== null) break;
-            }
-        } else {
-            for (const instruccion of instrucciones) {
-                if (!(instruccion instanceof Funcion) && !(instruccion instanceof Struct)) {
-                    instruccion.interpretar(arbol, tabla);
-                }
             }
         }
 

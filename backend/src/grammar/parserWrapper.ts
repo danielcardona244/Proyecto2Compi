@@ -1,11 +1,13 @@
 // @ts-ignore
-const parser = require("./parser");
+const parserModule = require("./parser");
 import { ErrorCollector } from "../errors/errorCollector";
 
 export default {
   parse: (input: string, errorCollector?: ErrorCollector) => {
-    if (errorCollector && typeof (parser as any).errorCollector !== 'undefined') {
-      (parser as any).errorCollector = errorCollector;
+    const parser = parserModule.parser || parserModule;
+    if (errorCollector) {
+      (parser as any).yy = (parser as any).yy || {};
+      (parser as any).yy.errorCollector = errorCollector;
     }
     return parser.parse(input);
   }
