@@ -47,7 +47,7 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 
 %lex
 %%
-[ \t]+                   /* ignorar espacios y tabs */
+[ \t\r\uFEFF]+           /* ignorar espacios, tabs, CR y BOM */
 \n                        return 'NEWLINE';
 
 // Comentarios
@@ -190,6 +190,7 @@ statement
     | variable_declaration
     | assignment_statement
     | expression_statement
+    | block_statement
     | if_statement
     | for_statement
     | switch_statement
@@ -198,6 +199,10 @@ statement
     | return_statement
     | function_declaration
     | struct_declaration
+;
+
+block_statement
+    : '{' separators optional_statements separators '}' { $$ = new Bloque($3, @1.first_line, @1.first_column); }
 ;
 
 variable_declaration
@@ -214,6 +219,18 @@ variable_declaration
     | VAR IDENTIFIER tipo { $$ = new Declaracion($3.tipoDato, $2, null, @1.first_line, @1.first_column); }
     | VAR IDENTIFIER tipo '=' struct_literal { $$ = new Declaracion($3.tipoDato, $2, $5, @1.first_line, @1.first_column); }
     | VAR IDENTIFIER tipo '=' expression { $$ = new Declaracion($3.tipoDato, $2, $5, @1.first_line, @1.first_column); }
+    | INT IDENTIFIER '=' expression { $$ = new Declaracion(tipoDato.ENTERO, $2, $4, @1.first_line, @1.first_column); }
+    | FLOAT64 IDENTIFIER '=' expression { $$ = new Declaracion(tipoDato.DECIMAL, $2, $4, @1.first_line, @1.first_column); }
+    | STRING_TYPE IDENTIFIER '=' expression { $$ = new Declaracion(tipoDato.CADENA, $2, $4, @1.first_line, @1.first_column); }
+    | BOOL IDENTIFIER '=' expression { $$ = new Declaracion(tipoDato.BOOLEANO, $2, $4, @1.first_line, @1.first_column); }
+    | RUNE IDENTIFIER '=' expression { $$ = new Declaracion(tipoDato.CARACTER, $2, $4, @1.first_line, @1.first_column); }
+    | INT IDENTIFIER { $$ = new Declaracion(tipoDato.ENTERO, $2, null, @1.first_line, @1.first_column); }
+    | FLOAT64 IDENTIFIER { $$ = new Declaracion(tipoDato.DECIMAL, $2, null, @1.first_line, @1.first_column); }
+    | STRING_TYPE IDENTIFIER { $$ = new Declaracion(tipoDato.CADENA, $2, null, @1.first_line, @1.first_column); }
+    | BOOL IDENTIFIER { $$ = new Declaracion(tipoDato.BOOLEANO, $2, null, @1.first_line, @1.first_column); }
+    | RUNE IDENTIFIER { $$ = new Declaracion(tipoDato.CARACTER, $2, null, @1.first_line, @1.first_column); }
+    | IDENTIFIER IDENTIFIER '=' struct_literal { $$ = new Declaracion(tipoDato.STRUCT, $2, $4, @1.first_line, @1.first_column); }
+    | IDENTIFIER IDENTIFIER '=' expression { $$ = new Declaracion(tipoDato.STRUCT, $2, $4, @1.first_line, @1.first_column); }
     | IDENTIFIER ':=' struct_literal { $$ = new Declaracion(tipoDato.VOID, $1, $3, @1.first_line, @1.first_column); }
     | IDENTIFIER ':=' expression { $$ = new Declaracion(tipoDato.VOID, $1, $3, @1.first_line, @1.first_column); }
 ;
@@ -266,7 +283,11 @@ case_clauses
 ;
 
 case_clause
-    : CASE expression ':' optional_statements { $$ = { valor: $2, sentencias: $4 }; }
+    : CASE expression ':' separators optional_statements { $$ = { valor: $2, sentencias: $5 }; }
+    | CASE expression ':' statement optional_statements { $$ = { valor: $2, sentencias: [$4].concat($5) }; }
+    | CASE expression ':' optional_statements { $$ = { valor: $2, sentencias: $4 }; }
+    | DEFAULT ':' separators optional_statements { $$ = { valor: null, sentencias: $4 }; }
+    | DEFAULT ':' statement optional_statements { $$ = { valor: null, sentencias: [$3].concat($4) }; }
     | DEFAULT ':' optional_statements { $$ = { valor: null, sentencias: $3 }; }
 ;
 
@@ -310,6 +331,7 @@ field_declarations
     : /* empty */ { $$ = []; }
     | field_declaration { $$ = [$1]; }
     | field_declarations field_declaration { $$ = $1.concat($2); }
+    | field_declarations separators field_declaration { $$ = $1.concat($3); }
 ;
 
 field_declaration

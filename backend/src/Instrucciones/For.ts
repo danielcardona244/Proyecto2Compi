@@ -100,15 +100,47 @@ export class For extends Instruccion {
     }
 
     public ast(arbol: Arbol, tabla: TablaSimbolos): Node {
+        if (this.isRange) {
+            const node = new Node("FOR_RANGE");
+            const indiceNode = new Node("INDICE");
+            indiceNode.pushChild(new Node(this.rangeVar1 || "_"));
+            node.pushChild(indiceNode);
+
+            if (this.rangeVar2 !== null) {
+                const valorNode = new Node("VALOR");
+                valorNode.pushChild(new Node(this.rangeVar2));
+                node.pushChild(valorNode);
+            }
+
+            const coleccionNode = new Node("COLECCION");
+            if (this.rangeExpression !== null) {
+                coleccionNode.pushChild(this.rangeExpression.ast(arbol, tabla));
+            }
+            node.pushChild(coleccionNode);
+
+            const sentenciasNode = new Node("SENTENCIAS");
+            for (const sentencia of this.sentencias) {
+                sentenciasNode.pushChild(sentencia.ast(arbol, tabla));
+            }
+            node.pushChild(sentenciasNode);
+            return node;
+        }
+
         let node = new Node("FOR");
         if (this.inicial !== null) {
-            node.pushChild(this.inicial.ast(arbol, tabla));
+            const inicialNode = new Node("INICIAL");
+            inicialNode.pushChild(this.inicial.ast(arbol, tabla));
+            node.pushChild(inicialNode);
         }
         if (this.condicion !== null) {
-            node.pushChild(this.condicion.ast(arbol, tabla));
+            const condicionNode = new Node("CONDICION");
+            condicionNode.pushChild(this.condicion.ast(arbol, tabla));
+            node.pushChild(condicionNode);
         }
         if (this.incremento !== null) {
-            node.pushChild(this.incremento.ast(arbol, tabla));
+            const incrementoNode = new Node("INCREMENTO");
+            incrementoNode.pushChild(this.incremento.ast(arbol, tabla));
+            node.pushChild(incrementoNode);
         }
         let nodoSentencias = new Node("SENTENCIAS");
         for (const sentencia of this.sentencias) {

@@ -21,9 +21,15 @@ export class SliceLiteral extends Instruccion {
 
     public ast(arbol: Arbol, tabla: TablaSimbolos): Node {
         let node = new Node('SLICE_LITERAL');
+        const tipoNode = new Node('TIPO_ELEMENTO');
+        tipoNode.pushChild(new Node(this.tipoElemento.nombreStruct || this.tipoElemento.tipoDato.toString()));
+        node.pushChild(tipoNode);
+
+        const elementosNode = new Node('ELEMENTOS');
         for (let elem of this.elementos) {
-            node.pushChild(elem.ast(arbol, tabla));
+            elementosNode.pushChild(elem.ast(arbol, tabla));
         }
+        node.pushChild(elementosNode);
         return node;
     }
 }

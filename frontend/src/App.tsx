@@ -25,11 +25,93 @@ type ErrorReporte = {
   tipo: string;
 };
 
+type AstNodeView = {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+};
+
+type AstEdgeView = {
+  from: string;
+  to: string;
+};
+
 const ejemplo = `func main() {
   var nums []int = []int{1, 2, 3}
   fmt.Println("len", len(nums))
 }`;
 const API_BASE = 'http://localhost:8000/api/parser';
+
+const parseDot = (dot: string): { nodes: AstNodeView[]; edges: AstEdgeView[]; width: number; height: number } => {
+  const labels = new Map<string, string>();
+  const edges: AstEdgeView[] = [];
+  const children = new Map<string, string[]>();
+  const parents = new Set<string>();
+  const nodeRegex = /^\s*(n\d+)\s+\[label="((?:\\"|[^"])*)"\];/gm;
+  const edgeRegex = /^\s*(n\d+)\s*->\s*(n\d+);/gm;
+
+  let match: RegExpExecArray | null;
+  while ((match = nodeRegex.exec(dot))) {
+    const id = match[1] || '';
+    const label = match[2] || '';
+    labels.set(id, label.replace(/\\"/g, '"').replace(/\\n/g, '\n'));
+  }
+  while ((match = edgeRegex.exec(dot))) {
+    const edge = { from: match[1] || '', to: match[2] || '' };
+    edges.push(edge);
+    children.set(edge.from, [...(children.get(edge.from) || []), edge.to]);
+    parents.add(edge.to);
+  }
+
+  const roots = [...labels.keys()].filter((id) => !parents.has(id));
+  const levels: string[][] = [];
+  const visit = (id: string, depth: number) => {
+    levels[depth] = levels[depth] || [];
+    const level = levels[depth] as string[];
+    if (!level.includes(id)) level.push(id);
+    (children.get(id) || []).forEach((child) => visit(child, depth + 1));
+  };
+  roots.forEach((root) => visit(root, 0));
+
+  const nodes: AstNodeView[] = [];
+  levels.forEach((level, depth) => {
+    level.forEach((id, index) => {
+      nodes.push({ id, label: labels.get(id) || id, x: 90 + index * 170, y: 55 + depth * 95 });
+    });
+  });
+
+  const width = Math.max(720, ...nodes.map((node) => node.x + 120));
+  const height = Math.max(320, ...nodes.map((node) => node.y + 70));
+  return { nodes, edges, width, height };
+};
+
+const AstGraph = ({ dot }: { dot: string }) => {
+  const graph = useMemo(() => parseDot(dot), [dot]);
+  if (!dot) return <div className="ast-empty">Genera el AST para ver el grafo.</div>;
+
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+
+  return (
+    <div className="ast-viewport">
+      <svg width={graph.width} height={graph.height} role="img" aria-label="Reporte AST">
+        {graph.edges.map((edge, index) => {
+          const from = nodeById.get(edge.from);
+          const to = nodeById.get(edge.to);
+          if (!from || !to) return null;
+          return <line key={`${edge.from}-${edge.to}-${index}`} x1={from.x} y1={from.y + 22} x2={to.x} y2={to.y - 22} />;
+        })}
+        {graph.nodes.map((node) => (
+          <g key={node.id} transform={`translate(${node.x - 64}, ${node.y - 22})`}>
+            <rect width="128" height="44" rx="6" />
+            <text x="64" y="27">{node.label.length > 18 ? `${node.label.slice(0, 17)}...` : node.label}</text>
+            <title>{node.label}</title>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+};
 
 function App() {
   const [archivos, setArchivos] = useState<Archivo[]>([{ id: 1, nombre: 'main.gst', codigo: ejemplo }]);
@@ -166,7 +248,12 @@ function App() {
           <button className={reporteActivo === 'errores' ? 'active' : ''} onClick={() => setReporteActivo('errores')}>Reporte de Errores</button>
         </nav>
 
-        {reporteActivo === 'ast' && <pre className="dot-output">{ast || 'Genera el AST para ver el DOT.'}</pre>}
+        {reporteActivo === 'ast' && (
+          <div className="ast-report">
+            <AstGraph dot={ast} />
+            <pre className="dot-output">{ast || 'Genera el AST para ver el DOT.'}</pre>
+          </div>
+        )}
 
         {reporteActivo === 'simbolos' && (
           <table>

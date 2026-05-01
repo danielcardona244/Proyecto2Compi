@@ -1,4 +1,4 @@
-import { Instruccion } from '../Abstract/Instruccion';
+ï»¿import { Instruccion } from '../Abstract/Instruccion';
 import { Arbol } from '../Simbolo/Arbol';
 import { TablaSimbolos } from '../Simbolo/TablaSimbolos';
 import { Tipo } from '../Simbolo/Tipo';
@@ -20,15 +20,35 @@ export class Funcion extends Instruccion {
     }
 
     public interpretar(arbol: Arbol, tabla: TablaSimbolos): any {
-        // Definir la función en la tabla de símbolos global
         tabla.setFuncion(this.nombre, this);
         return null;
     }
 
     public ast(arbol: Arbol, tabla: TablaSimbolos): Node {
-        let node = new Node('FUNCION');
+        const node = new Node('FUNCION');
         node.pushChild(new Node(this.nombre));
-        // Agregar parámetros, etc.
+
+        const paramsNode = new Node('PARAMETROS');
+        for (const parametro of this.parametros) {
+            const paramNode = new Node(parametro.nombre);
+            if (parametro.tipo) {
+                paramNode.pushChild(new Node(parametro.tipo.tipoDato?.toString() || 'TIPO'));
+            }
+            paramsNode.pushChild(paramNode);
+        }
+        node.pushChild(paramsNode);
+
+        if (this.tipoRetorno) {
+            const retornoNode = new Node('TIPO_RETORNO');
+            retornoNode.pushChild(new Node(this.tipoRetorno.tipoDato.toString()));
+            node.pushChild(retornoNode);
+        }
+
+        const instruccionesNode = new Node('INSTRUCCIONES');
+        for (const instruccion of this.instrucciones) {
+            instruccionesNode.pushChild(instruccion.ast(arbol, tabla));
+        }
+        node.pushChild(instruccionesNode);
         return node;
     }
 }

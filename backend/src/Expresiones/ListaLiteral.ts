@@ -16,7 +16,9 @@ export class ListaLiteral extends Instruccion {
 
     public ast(arbol: Arbol, tabla: TablaSimbolos): Node {
         const node = new Node("LISTA_LITERAL");
-        for (const elemento of this.elementos) node.pushChild(elemento.ast(arbol, tabla));
+        const elementosNode = new Node("ELEMENTOS");
+        for (const elemento of this.elementos) elementosNode.pushChild(elemento.ast(arbol, tabla));
+        node.pushChild(elementosNode);
         return node;
     }
 }

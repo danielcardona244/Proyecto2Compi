@@ -30,10 +30,26 @@ export class MapLiteral extends Instruccion {
 
     public ast(arbol: Arbol, tabla: TablaSimbolos): Node {
         let node = new Node('MAP_LITERAL');
+        const keyTypeNode = new Node('TIPO_CLAVE');
+        keyTypeNode.pushChild(new Node(this.keyType.nombreStruct || this.keyType.tipoDato.toString()));
+        node.pushChild(keyTypeNode);
+
+        const valueTypeNode = new Node('TIPO_VALOR');
+        valueTypeNode.pushChild(new Node(this.valueType.nombreStruct || this.valueType.tipoDato.toString()));
+        node.pushChild(valueTypeNode);
+
+        const pairsNode = new Node('PARES');
         for (let pair of this.pairs) {
-            node.pushChild(pair.key.ast(arbol, tabla));
-            node.pushChild(pair.value.ast(arbol, tabla));
+            const pairNode = new Node('PAR');
+            const keyNode = new Node('CLAVE');
+            keyNode.pushChild(pair.key.ast(arbol, tabla));
+            const valueNode = new Node('VALOR');
+            valueNode.pushChild(pair.value.ast(arbol, tabla));
+            pairNode.pushChild(keyNode);
+            pairNode.pushChild(valueNode);
+            pairsNode.pushChild(pairNode);
         }
+        node.pushChild(pairsNode);
         return node;
     }
 }

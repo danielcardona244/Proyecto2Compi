@@ -43,7 +43,15 @@ export class LlamadaFuncion extends Instruccion {
 
     public ast(arbol: Arbol, tabla: TablaSimbolos): Node {
         const node = new Node('LLAMADA_FUNCION');
-        node.pushChild(new Node(this.nombre));
+        const nombreNode = new Node('NOMBRE');
+        nombreNode.pushChild(new Node(this.nombre));
+        node.pushChild(nombreNode);
+
+        const argumentosNode = new Node('ARGUMENTOS');
+        for (const argumento of this.argumentos) {
+            argumentosNode.pushChild(argumento.ast(arbol, tabla));
+        }
+        node.pushChild(argumentosNode);
         return node;
     }
 

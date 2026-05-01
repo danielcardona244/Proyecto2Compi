@@ -102,20 +102,26 @@ export const getAST = (req: any, res: any) => {
         let dot = 'digraph AST {\n';
         dot += '  node [shape=box];\n';
 
-        const generateDot = (node: any, id: number): string => {
-            let result = `  ${id} [label="${node.valor}"];\n`;
-            let childId = id + 1;
+        let nodeCounter = 0;
+        const escapeDot = (value: any): string => String(value ?? "")
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/\n/g, "\\n");
+
+        const generateDot = (node: any): { dot: string; id: number } => {
+            const id = nodeCounter++;
+            let result = `  n${id} [label="${escapeDot(node.valor)}"];\n`;
             for (const child of node.hijos) {
-                result += `  ${id} -> ${childId};\n`;
-                result += generateDot(child, childId);
-                childId++;
+                const childResult = generateDot(child);
+                result += childResult.dot;
+                result += `  n${id} -> n${childResult.id};\n`;
             }
-            return result;
+            return { dot: result, id };
         };
 
         for (let i = 0; i < instrucciones.length; i++) {
             const astNode = instrucciones[i].ast(arbol, tabla);
-            dot += generateDot(astNode, i);
+            dot += generateDot(astNode).dot;
         }
         dot += '}';
 

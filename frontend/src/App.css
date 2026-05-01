@@ -103,6 +103,49 @@ button:hover {
   white-space: pre-wrap;
 }
 
+.ast-report {
+  display: grid;
+  gap: 12px;
+}
+
+.ast-viewport {
+  background: #f8fafc;
+  border: 1px solid #d9deea;
+  border-radius: 8px;
+  max-height: 520px;
+  overflow: auto;
+}
+
+.ast-viewport svg {
+  display: block;
+}
+
+.ast-viewport line {
+  stroke: #73809a;
+  stroke-width: 1.5;
+}
+
+.ast-viewport rect {
+  fill: #ffffff;
+  stroke: #2458d3;
+  stroke-width: 1.5;
+}
+
+.ast-viewport text {
+  fill: #1d2433;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 12px;
+  text-anchor: middle;
+}
+
+.ast-empty {
+  background: #f8fafc;
+  border: 1px dashed #b8c2d8;
+  border-radius: 8px;
+  color: #516078;
+  padding: 24px;
+}
+
 .reports-panel {
   margin-top: 14px;
   padding: 12px;
