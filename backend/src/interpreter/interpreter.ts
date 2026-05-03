@@ -1,6 +1,3 @@
-/**
- * Interpreter.ts - Motor de ejecución del AST de GoScript
- */
 
 import { Environment, GoFunction } from './environment';
 import { BuiltinFunctions } from './builtins';

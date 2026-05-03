@@ -51,8 +51,8 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 \n                        return 'NEWLINE';
 
 // Comentarios
-"//".*                /* ignorar comentarios de l�nea */
-"/*"(.|\n|\r)*?"*/"   /* ignorar comentarios multil�nea */
+"//".*                /* ignorar comentarios de linea */
+"/*"(.|\n|\r)*?"*/"   /* ignorar comentarios multilinea */
 
 // Palabras reservadas
 "var"                 return 'VAR';
@@ -116,7 +116,7 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 "!"                   return '!';
 "="                   return '=';
 
-// Puntuaci�n
+// Puntuacion
 "("                   return '(';
 ")"                   return ')';
 "{"                   return '{';
@@ -130,7 +130,7 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 
 . {
     if (typeof yy.errorCollector !== 'undefined') {
-        yy.errorCollector.addLexicalError("Car�cter no reconocido: " + yytext, yylloc.first_line, yylloc.first_column);
+        yy.errorCollector.addLexicalError("Caracter no reconocido: " + yytext, yylloc.first_line, yylloc.first_column);
     }
 }
 

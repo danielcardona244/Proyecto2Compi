@@ -18,14 +18,14 @@ export class Server {
  
 
   constructor() {
-    console.log('🚀 Initializing GoScript Interpreter Server...');
+    console.log('Iniciando Interprete GoScript Server...');
     this.app = express();
     this.port = Number(process.env.PORT) || 3001;
-    console.log(`📡 Server will run on port: ${this.port}`);
+    console.log(`Server corriendo en puerto: ${this.port}`);
 
     this.middlewares();
     this.routes();
-    console.log('✅ Server initialization complete');
+    console.log('Server inicializado correctamente.');
   }
 
   private middlewares() {
