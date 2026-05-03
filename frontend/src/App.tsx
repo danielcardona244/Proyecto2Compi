@@ -140,6 +140,19 @@ function App() {
     setActivoId(id);
   };
 
+  const cerrarArchivo = (id: number) => {
+    setArchivos((actuales) => {
+      if (actuales.length <= 1) return actuales;
+      const index = actuales.findIndex((archivo) => archivo.id === id);
+      const siguientes = actuales.filter((archivo) => archivo.id !== id);
+      if (id === activoId) {
+        const nuevoActivo = siguientes[Math.max(0, index - 1)] || siguientes[0];
+        if (nuevoActivo) setActivoId(nuevoActivo.id);
+      }
+      return siguientes;
+    });
+  };
+
   const abrirArchivo = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -221,7 +234,21 @@ function App() {
                 className={archivo.id === activoId ? 'file-tab active' : 'file-tab'}
                 onClick={() => setActivoId(archivo.id)}
               >
-                {archivo.nombre}
+                <span>{archivo.nombre}</span>
+                {archivos.length > 1 && (
+                  <span
+                    className="close-tab"
+                    role="button"
+                    aria-label={`Cerrar ${archivo.nombre}`}
+                    title="Cerrar archivo"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      cerrarArchivo(archivo.id);
+                    }}
+                  >
+                    x
+                  </span>
+                )}
               </button>
             ))}
           </div>

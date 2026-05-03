@@ -66,12 +66,39 @@ button:hover {
 }
 
 .file-tab {
+  align-items: center;
   background: #fff;
   color: #33415c;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: space-between;
   max-width: 180px;
+  overflow: hidden;
+  padding-right: 8px;
+}
+
+.file-tab span:first-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.close-tab {
+  align-items: center;
+  border-radius: 50%;
+  display: inline-flex;
+  flex: 0 0 18px;
+  font-size: 13px;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  opacity: 0.75;
+  width: 18px;
+}
+
+.close-tab:hover {
+  background: rgba(17, 24, 39, 0.12);
+  opacity: 1;
 }
 
 .file-tab.active,
