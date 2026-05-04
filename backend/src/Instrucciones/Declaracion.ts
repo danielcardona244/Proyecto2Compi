@@ -28,7 +28,7 @@ export class Declaracion extends Instruccion {
             }
         }
 
-        const tipoFinal = this.tipoDeclarado === tipoDato.VOID ? this.inferirTipo(valorInterpretado) : this.tipoDeclarado;
+        const tipoFinal = this.tipoDeclarado === tipoDato.VOID ? this.inferirTipo(valorInterpretado, this.valor?.tipo?.tipoDato) : this.tipoDeclarado;
         let simbolo = new Simbolo(this.id, new Tipo(tipoFinal, false), valorInterpretado, this.linea, this.columna, "Variable", tabla.nombre);
         if (!tabla.setSimbolo(simbolo)) {
             arbol.errores.push(new Errores("SEMANTICO", `Variable ${this.id} ya declarada`, this.linea, this.columna));
@@ -48,7 +48,10 @@ export class Declaracion extends Instruccion {
         return node;
     }
 
-    private inferirTipo(valor: any): tipoDato {
+    private inferirTipo(valor: any, tipoExpresion?: tipoDato): tipoDato {
+        if (tipoExpresion && tipoExpresion !== tipoDato.VOID) {
+            return tipoExpresion;
+        }
         if (typeof valor === 'number') {
             return valor % 1 === 0 ? tipoDato.ENTERO : tipoDato.DECIMAL;
         } else if (typeof valor === 'string') {

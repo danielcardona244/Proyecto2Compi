@@ -10,7 +10,7 @@ export class SliceLiteral extends Instruccion {
     public elementos: Instruccion[];
 
     constructor(tipoElemento: Tipo, elementos: Instruccion[], linea: number, columna: number) {
-        super(new Tipo(tipoDato.ENTERO, true), linea, columna); // Slice type
+        super(new Tipo(tipoDato.SLICE, false, tipoElemento), linea, columna);
         this.tipoElemento = tipoElemento;
         this.elementos = elementos;
     }

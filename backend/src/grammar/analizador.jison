@@ -105,6 +105,8 @@ const OperadoresRelacionales = require("../Expresiones/OperadoresRelacionales").
 "*="                  return '*=';
 "/="                  return '/=';
 "%="                  return '%=';
+"++"                  return '++';
+"--"                  return '--';
 ":="                  return ':=';
 "+"                   return '+';
 "-"                   return '-';
@@ -357,6 +359,8 @@ assignment_statement
     | IDENTIFIER '*=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '*='); }
     | IDENTIFIER '/=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '/='); }
     | IDENTIFIER '%=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '%='); }
+    | IDENTIFIER '++' { $$ = new Asignacion($1, new Nativo(1, new Tipo(tipoDato.ENTERO, false), @1.first_line, @1.first_column), @1.first_line, @1.first_column, '+='); }
+    | IDENTIFIER '--' { $$ = new Asignacion($1, new Nativo(1, new Tipo(tipoDato.ENTERO, false), @1.first_line, @1.first_column), @1.first_line, @1.first_column, '-='); }
     | array_access '=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '='); }
     | field_access '=' expression { $$ = new Asignacion($1, $3, @1.first_line, @1.first_column, '='); }
 ;

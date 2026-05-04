@@ -68,6 +68,7 @@ export class LlamadaFuncion extends Instruccion {
         if (this.nombre === 'append') {
             const slice = this.argumentos[0]?.interpretar(arbol, tabla);
             const valores = this.argumentos.slice(1).map(arg => arg.interpretar(arbol, tabla));
+            if (slice === null || slice === undefined) return [...valores];
             return Array.isArray(slice) ? [...slice, ...valores] : null;
         }
         if (this.nombre === 'slices.Index') {
@@ -91,7 +92,17 @@ export class LlamadaFuncion extends Instruccion {
             return Number.isNaN(parsed) ? null : parsed;
         }
         if (this.nombre === 'reflect.TypeOf') {
-            const valor = this.argumentos[0]?.interpretar(arbol, tabla);
+            const argumento = this.argumentos[0];
+            const valor = argumento?.interpretar(arbol, tabla);
+            const tipo = argumento?.tipo?.tipoDato;
+            if (tipo === tipoDato.ENTERO) return "int";
+            if (tipo === tipoDato.DECIMAL) return "float64";
+            if (tipo === tipoDato.CADENA) return "string";
+            if (tipo === tipoDato.BOOLEANO) return "bool";
+            if (tipo === tipoDato.CARACTER) return "rune";
+            if (tipo === tipoDato.SLICE) return "slice";
+            if (tipo === tipoDato.MAP) return "map";
+            if (tipo === tipoDato.STRUCT) return "struct";
             if (valor === null || valor === undefined) return "nil";
             if (Array.isArray(valor)) return "slice";
             if (typeof valor === "number") return Number.isInteger(valor) ? "int" : "float64";
